@@ -1,11 +1,5 @@
 // ============================================================================
 // Milton Montessori Family Hub — entire backend in one file.
-// Cloudflare Pages runs this for every request. It:
-//   - serves the website (index.html) with security headers baked in
-//   - handles /api/login, /api/session, /api/submissions, /api/content
-//   - stores sign-ups and site content in Cloudflare KV (binding: HUB_KV)
-//   - protects the admin login with hashing + server-side rate limiting
-// You don't need to edit this file. Set-up lives in Cloudflare (see chat).
 // ============================================================================
 
 export async function onRequest(context) {
@@ -13,7 +7,6 @@ export async function onRequest(context) {
   const url = new URL(request.url);
   const path = url.pathname;
 
-  // --- API routes -----------------------------------------------------------
   if (path.startsWith("/api/")) {
     try {
       const res = await handleApi(path, request, env, url);
@@ -23,14 +16,10 @@ export async function onRequest(context) {
     }
   }
 
-  // --- Everything else: serve the static site, add security headers ---------
   const res = await next();
   return withSecurity(res);
 }
 
-// ----------------------------------------------------------------------------
-// API router
-// ----------------------------------------------------------------------------
 async function handleApi(path, request, env, url) {
   const m = request.method;
 
@@ -38,38 +27,31 @@ async function handleApi(path, request, env, url) {
     if (m === "POST") return apiLogin(request, env);
     return bad("Method not allowed.", 405);
   }
-
   if (path === "/api/session") {
     if (m === "GET") return json({ authed: await requireAdmin(request, env) });
     if (m === "DELETE") return json({ ok: true }, 200, { "Set-Cookie": clearCookieHeader() });
     return bad("Method not allowed.", 405);
   }
-
   if (path === "/api/submissions") {
     if (m === "POST") return apiSubmit(request, env);
     if (m === "GET") return apiListSubmissions(request, env, url);
     if (m === "DELETE") return apiDeleteSubmission(request, env, url);
     return bad("Method not allowed.", 405);
   }
-
   if (path === "/api/content") {
     if (m === "GET") return apiGetContent(env);
     if (m === "PUT") return apiPutContent(request, env);
     return bad("Method not allowed.", 405);
   }
-
   return bad("Not found.", 404);
 }
 
-// ----------------------------------------------------------------------------
-// LOGIN — server-side password check + real rate limiting
-// ----------------------------------------------------------------------------
+// ---- LOGIN -----------------------------------------------------------------
 async function apiLogin(request, env) {
   const ip = clientIp(request);
-
-  const burst = await rateLimit(env, `login:burst:${ip}`, 5, 60);        // 5 / minute
+  const burst = await rateLimit(env, `login:burst:${ip}`, 5, 60);
   if (!burst.allowed) return bad(`Too many attempts. Try again in ${burst.retryAfter}s.`, 429);
-  const slow = await rateLimit(env, `login:slow:${ip}`, 30, 60 * 60);     // 30 / hour
+  const slow = await rateLimit(env, `login:slow:${ip}`, 30, 60 * 60);
   if (!slow.allowed) return bad("Too many attempts. Try again later.", 429);
 
   let body;
@@ -78,10 +60,6 @@ async function apiLogin(request, env) {
   const username = String(body.username || "").trim();
   const password = String(body.password || "");
 
-  // ---- Admin login -----------------------------------------------------------
-  // Built-in username/password so the site works with zero setup.
-  // To change them, edit the two lines below (or set ADMIN_USERNAME /
-  // ADMIN_PASSWORD in Cloudflare to override without touching the code).
   const expectedUser = env.ADMIN_USERNAME || "admin";
   const expectedPass = env.ADMIN_PASSWORD || "miltonpta2026";
 
@@ -89,21 +67,19 @@ async function apiLogin(request, env) {
   const passOk = safeEqual(password, expectedPass);
   if (!(userOk && passOk)) return bad("Incorrect username or password.", 401);
 
-  const ttl = 60 * 60 * 8; // 8 hours
+  const ttl = 60 * 60 * 8;
   const token = await makeSession(env, ttl);
   return json({ ok: true }, 200, { "Set-Cookie": sessionCookieHeader(token, ttl) });
 }
 
-// ----------------------------------------------------------------------------
-// SUBMISSIONS — public POST (rate limited), admin-only GET/DELETE
-// ----------------------------------------------------------------------------
+// ---- SUBMISSIONS -----------------------------------------------------------
 function newId() {
   return `${Date.now()}-${crypto.getRandomValues(new Uint32Array(1))[0].toString(36)}`;
 }
 
 async function apiSubmit(request, env) {
   const ip = clientIp(request);
-  const rl = await rateLimit(env, `submit:${ip}`, 8, 60 * 10); // 8 per 10 min
+  const rl = await rateLimit(env, `submit:${ip}`, 8, 60 * 10);
   if (!rl.allowed) return bad("You've submitted a few times just now. Please wait a bit.", 429);
   if (!env.HUB_KV) return bad("Storage not configured.", 500);
 
@@ -127,7 +103,7 @@ async function apiSubmit(request, env) {
   };
   const prefix = type === "rsvp" ? "rsvp" : "vol";
   await env.HUB_KV.put(`${prefix}:${newId()}`, JSON.stringify(entry), {
-    expirationTtl: 60 * 60 * 24 * 430, // ~14 months
+    expirationTtl: 60 * 60 * 24 * 430,
   });
   return json({ ok: true });
 }
@@ -136,7 +112,7 @@ async function apiListSubmissions(request, env, url) {
   if (!(await requireAdmin(request, env))) return bad("Not authorized.", 401);
   if (!env.HUB_KV) return bad("Storage not configured.", 500);
 
-  const kind = url.searchParams.get("kind"); // "vol" | "rsvp" | null
+  const kind = url.searchParams.get("kind");
   async function listPrefix(prefix) {
     const out = [];
     let cursor;
@@ -180,9 +156,7 @@ async function apiDeleteSubmission(request, env, url) {
   return bad("Nothing to delete.");
 }
 
-// ----------------------------------------------------------------------------
-// CONTENT — public GET, admin-only PUT
-// ----------------------------------------------------------------------------
+// ---- CONTENT ---------------------------------------------------------------
 const CONTENT_KEY = "site:content";
 const MAX_CONTENT_BYTES = 4.5 * 1024 * 1024;
 
@@ -208,10 +182,9 @@ async function apiPutContent(request, env) {
 }
 
 // ============================================================================
-// Helpers (auth, crypto, rate limiting, responses, security headers)
+// Helpers
 // ============================================================================
 
-// ---- Security headers applied to every response ----------------------------
 function withSecurity(res) {
   const h = new Headers(res.headers);
   h.set("X-Frame-Options", "DENY");
@@ -226,7 +199,6 @@ function withSecurity(res) {
   return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
 }
 
-// ---- JSON responses --------------------------------------------------------
 function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
     status,
@@ -240,7 +212,6 @@ function json(data, status = 200, extraHeaders = {}) {
 }
 function bad(msg, status = 400) { return json({ ok: false, error: msg }, status); }
 
-// ---- Small utilities -------------------------------------------------------
 function clientIp(request) { return request.headers.get("CF-Connecting-IP") || "0.0.0.0"; }
 async function readJson(request, maxBytes = 20 * 1024) {
   const buf = await request.arrayBuffer();
@@ -257,26 +228,6 @@ function safeEqual(a, b) {
   return diff === 0;
 }
 
-// ---- Password hashing (PBKDF2) ---------------------------------------------
-async function verifyPassword(password, stored) {
-  try {
-    const [scheme, iterStr, saltHex, hashHex] = String(stored).split("$");
-    if (scheme !== "pbkdf2") return false;
-    const iterations = parseInt(iterStr, 10);
-    const salt = hexToBytes(saltHex);
-    const derivedHex = await pbkdf2Hex(password, salt, iterations, hashHex.length / 2);
-    return safeEqual(derivedHex, hashHex);
-  } catch { return false; }
-}
-async function pbkdf2Hex(password, salt, iterations, lenBytes) {
-  const keyMaterial = await crypto.subtle.importKey(
-    "raw", new TextEncoder().encode(password), { name: "PBKDF2" }, false, ["deriveBits"]
-  );
-  const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", salt, iterations, hash: "SHA-256" }, keyMaterial, lenBytes * 8
-  );
-  return bytesToHex(new Uint8Array(bits));
-}
 function hexToBytes(hex) {
   const out = new Uint8Array(hex.length / 2);
   for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
@@ -288,10 +239,13 @@ function bytesToHex(bytes) {
 
 // ---- Signed session cookies ------------------------------------------------
 const SESSION_COOKIE = "mmfh_session";
+function sessionSecret(env) {
+  return (env && env.SESSION_SECRET) || "mmfh-builtin-session-key-2026-change-if-you-like";
+}
 async function makeSession(env, ttlSeconds = 60 * 60 * 8) {
   const exp = Math.floor(Date.now() / 1000) + ttlSeconds;
   const payload = `admin.${exp}`;
-  const sig = await hmac(env.SESSION_SECRET, payload);
+  const sig = await hmac(sessionSecret(env), payload);
   return `${payload}.${sig}`;
 }
 async function verifySession(env, token) {
@@ -299,7 +253,7 @@ async function verifySession(env, token) {
   const parts = token.split(".");
   if (parts.length !== 3) return false;
   const [role, expStr, sig] = parts;
-  const expected = await hmac(env.SESSION_SECRET, `${role}.${expStr}`);
+  const expected = await hmac(sessionSecret(env), `${role}.${expStr}`);
   if (!safeEqual(sig, expected)) return false;
   if (parseInt(expStr, 10) < Math.floor(Date.now() / 1000)) return false;
   return role === "admin";
@@ -330,7 +284,7 @@ async function requireAdmin(request, env) {
   return verifySession(env, parseCookies(request)[SESSION_COOKIE]);
 }
 
-// ---- Rate limiting (KV-backed, per IP) -------------------------------------
+// ---- Rate limiting ---------------------------------------------------------
 async function rateLimit(env, key, limit, windowSeconds) {
   const kv = env.HUB_KV;
   if (!kv) return { allowed: true, remaining: limit };
