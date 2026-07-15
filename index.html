@@ -634,7 +634,7 @@ function saveVol(v){_volCache=v||[];}
 function saveRsvp(v){_rsvpCache=v||[];}
 
 /* ---------- render public ---------- */
-function doAction(a){ if(!a)return; if(a.indexOf("cal:")===0)openCal(a.slice(4)); else if(a.indexOf("flyer:")===0){var fk=a.slice(6);if(FEATURED_FLYERS[fk])openImg(FEATURED_FLYERS[fk].src,FEATURED_FLYERS[fk].title);} else if(a.indexOf("scroll:")===0)scrollTo(a.slice(7)); else if(/^https?:|^mailto:/.test(a))window.open(a,"_blank"); }
+function doAction(a){ if(!a)return; if(a.indexOf("cal:")===0)openCal(a.slice(4)); else if(a.indexOf("flyer:")===0){var fk=a.slice(6);if(FEATURED_FLYERS[fk])openImg(FEATURED_FLYERS[fk].src,FEATURED_FLYERS[fk].title);} else if(a.indexOf("scroll:")===0)scrollToSel(a.slice(7)); else if(/^https?:|^mailto:/.test(a))window.open(a,"_blank"); }
 function renderAll(){
   var logo=content.logoUrl||EMBED.logo;
   var bl=document.getElementById("brandLogo"); if(bl)bl.src=logo;
@@ -682,9 +682,9 @@ function renderAll(){
 }
 
 /* ---------- navigation ---------- */
-function scrollTo(sel){ if(sel==="#admin"){location.hash="#admin";return;} var el=document.querySelector(sel); if(el)el.scrollIntoView({behavior:"smooth"}); }
+function scrollToSel(sel){ if(sel==="#admin"){location.hash="#admin";return;} var el=document.querySelector(sel); if(el)el.scrollIntoView({behavior:"smooth"}); }
 document.addEventListener("click",function(e){
-  var s=e.target.closest("[data-scroll]"); if(s){e.preventDefault();scrollTo(s.getAttribute("data-scroll"));return;}
+  var s=e.target.closest("[data-scroll]"); if(s){e.preventDefault();scrollToSel(s.getAttribute("data-scroll"));return;}
   var c=e.target.closest("[data-cal]"); if(c){e.preventDefault();openCal(c.getAttribute("data-cal"));}
 });
 
