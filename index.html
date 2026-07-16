@@ -256,6 +256,18 @@
   .row-edit .input{padding:10px 12px;}
   .card-edit{border:1px solid var(--line);border-radius:12px;padding:16px;background:#fff;}
   .card-edit .lbl{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--navy-head);font-weight:600;margin:0 0 4px;}
+  /* per-item flyer upload (month cards + events) */
+  .flyer-edit{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line);}
+  .flyer-edit .lbl{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--navy-head);font-weight:600;}
+  .flyer-edit .on{color:var(--green);font-weight:600;text-transform:none;letter-spacing:0;}
+  .flyer-edit .off{color:var(--muted);font-weight:500;text-transform:none;letter-spacing:0;}
+  .flyer-edit .fe-prev{width:76px;height:76px;object-fit:cover;object-position:top;border:1px solid var(--line);border-radius:8px;background:#fff;flex:0 0 auto;}
+  .flyer-edit .fe-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+  .flyer-edit .fe-hint{font-size:.78rem;color:var(--muted);margin-top:6px;line-height:1.35;}
+  .ev-edit-wrap{border:1px solid var(--line);border-radius:11px;background:#fff;padding:12px;margin-bottom:10px;}
+  .ev-edit-wrap .row-edit{border:none;padding:0;margin:0;background:none;}
+  .ev-flyer-edit{display:flex;gap:14px;align-items:flex-start;}
+  .ev-flyer-edit .fe-col{flex:1 1 auto;min-width:0;}
   .drop{border:2px dashed #d6cbb2;border-radius:14px;padding:24px;text-align:center;background:#fffdf7;cursor:pointer;transition:border-color .15s,background .15s;color:var(--muted);}
   .drop:hover{border-color:var(--green-soft);background:#fbfaf3;}
   .drop svg{width:30px;height:30px;color:var(--green-soft);margin:0 auto 8px;}
@@ -293,6 +305,7 @@
     .foot .qr .lab{text-align:center;}
     .grid2,.cal-edit{grid-template-columns:1fr;}
     .row-edit{grid-template-columns:1fr;}
+    .ev-flyer-edit{flex-direction:column;}
     /* nav becomes a horizontally scrollable strip instead of disappearing */
     .topbar .wrap{flex-wrap:wrap;gap:10px 20px;padding:12px 22px;}
     nav.mainnav{order:3;flex:1 1 100%;display:flex;gap:22px;overflow-x:auto;
@@ -674,7 +687,16 @@ function saveVol(v){_volCache=v||[];}
 function saveRsvp(v){_rsvpCache=v||[];}
 
 /* ---------- render public ---------- */
-function doAction(a){ if(!a)return; if(a.indexOf("cal:")===0)openCal(a.slice(4)); else if(a.indexOf("flyer:")===0){var fk=a.slice(6);if(FEATURED_FLYERS[fk])openImg(FEATURED_FLYERS[fk].src,FEATURED_FLYERS[fk].title);} else if(a.indexOf("scroll:")===0)scrollToSel(a.slice(7)); else if(/^https?:|^mailto:/.test(a))window.open(a,"_blank"); }
+// Resolve the flyer image for an event or month card.
+// Priority: an uploaded image (flyerImg) first, then a built-in flyer key.
+function flyerSrcFor(o){ if(!o)return ""; if(o.flyerImg)return o.flyerImg; if(o.flyer&&FEATURED_FLYERS[o.flyer])return FEATURED_FLYERS[o.flyer].src; return ""; }
+function flyerTitleFor(o){ if(!o)return "Flyer"; if(o.flyerImg)return o.name||"Flyer"; if(o.flyer&&FEATURED_FLYERS[o.flyer])return FEATURED_FLYERS[o.flyer].title; return o.name||"Flyer"; }
+function doAction(a,ctx){ if(!a)return;
+  if(a==="flyerimg"){ if(ctx)openImg(ctx,arguments[2]||"Flyer"); return; }
+  if(a.indexOf("cal:")===0)openCal(a.slice(4));
+  else if(a.indexOf("flyer:")===0){var fk=a.slice(6);if(FEATURED_FLYERS[fk])openImg(FEATURED_FLYERS[fk].src,FEATURED_FLYERS[fk].title);}
+  else if(a.indexOf("scroll:")===0)scrollToSel(a.slice(7));
+  else if(/^https?:|^mailto:/.test(a))window.open(a,"_blank"); }
 function renderAll(){
   var logo=content.logoUrl||EMBED.logo;
   var bl=document.getElementById("brandLogo"); if(bl)bl.src=logo;
@@ -694,19 +716,21 @@ function renderAll(){
   document.getElementById("calSchoolThumb").src=calSrc("school");
   document.getElementById("calPtaThumb").src=calSrc("pta");
 
-  document.getElementById("monthCards").innerHTML=content.monthCards.map(function(c){
+  document.getElementById("monthCards").innerHTML=content.monthCards.map(function(c,i){
+    // If this card has an uploaded flyer image, its button opens that image.
+    var act=c.flyerImg?"flyerimg":(c.action||"");
     return '<div class="mcard"><span class="ic">'+icon(c.icon)+'</span><h3>'+esc(c.title)+'</h3><div class="when">'+esc(c.date)+'</div>'+
-      '<button class="btn-green" data-act="'+esc(c.action||"")+'">'+esc(c.btn||"Details")+'</button></div>';
+      '<button class="btn-green" data-act="'+esc(act)+'" data-mc="'+i+'">'+esc(c.btn||"Details")+'</button></div>';
   }).join("");
 
   var eg=document.getElementById("evGrid");
-  eg.innerHTML=content.events.map(function(e){
-    var hasF=e.flyer&&FEATURED_FLYERS[e.flyer];
-    return '<div class="ev-card'+(hasF?' clickable':'')+'"'+(hasF?' data-flyer="'+esc(e.flyer)+'"':'')+'><div class="ev-ic">'+icon(e.icon)+'</div><div class="ev-date">'+esc(e.date)+'</div>'+
+  eg.innerHTML=content.events.map(function(e,i){
+    var src=flyerSrcFor(e);
+    return '<div class="ev-card'+(src?' clickable':'')+'"'+(src?' data-i="'+i+'"':'')+'><div class="ev-ic">'+icon(e.icon)+'</div><div class="ev-date">'+esc(e.date)+'</div>'+
       '<div class="ev-name">'+esc(e.name)+'</div>'+(e.note?'<div class="ev-note">'+esc(e.note)+'</div>':'')+
-      (hasF?'<div class="ev-flyer">View flyer &rarr;</div>':'')+'</div>';
+      (src?'<div class="ev-flyer">View flyer &rarr;</div>':'')+'</div>';
   }).join("");
-  [].forEach.call(eg.querySelectorAll(".ev-card.clickable"),function(el){el.addEventListener("click",function(){var k=el.getAttribute("data-flyer");if(FEATURED_FLYERS[k])openImg(FEATURED_FLYERS[k].src,FEATURED_FLYERS[k].title);});});
+  [].forEach.call(eg.querySelectorAll(".ev-card.clickable"),function(el){el.addEventListener("click",function(){var e=content.events[+el.getAttribute("data-i")];if(!e)return;var src=flyerSrcFor(e);if(src)openImg(src,flyerTitleFor(e));});});
 
   var evOpts=content.events.map(function(e){var lbl=e.name+(e.date?" — "+e.date:"");return '<option value="'+esc(lbl)+'">'+esc(lbl)+'</option>';}).join("");
   var vs=document.getElementById("volEvent"); if(vs)vs.innerHTML='<option value="">Wherever I\'m needed most</option>'+evOpts;
@@ -718,7 +742,10 @@ function renderAll(){
     [].forEach.call(fg.querySelectorAll(".flyer"),function(el,i){el.addEventListener("click",function(){openImg(content.flyers[i].img,content.flyers[i].name||"Flyer");});});
   } else {fsec.style.display="none";fg.innerHTML="";}
 
-  [].forEach.call(document.querySelectorAll("[data-act]"),function(b){b.onclick=function(){doAction(b.getAttribute("data-act"));};});
+  [].forEach.call(document.querySelectorAll("[data-act]"),function(b){b.onclick=function(){
+    var act=b.getAttribute("data-act");
+    if(act==="flyerimg"){var mc=content.monthCards[+b.getAttribute("data-mc")];if(mc&&mc.flyerImg)openImg(mc.flyerImg,mc.title||"Flyer");return;}
+    doAction(act);};});
 }
 
 /* ---------- navigation ---------- */
@@ -1035,39 +1062,98 @@ function exportRsvpCsv(){
 }
 function buildMonthEdit(){
   var w=document.getElementById("monthEdit");
-  w.innerHTML=content.monthCards.map(function(c,i){return '<div class="card-edit">'+
+  w.innerHTML=content.monthCards.map(function(c,i){
+    var hasImg=!!c.flyerImg;
+    return '<div class="card-edit">'+
     '<div class="lbl">Card '+(i+1)+' — icon</div><select class="input mcicon" data-i="'+i+'">'+iconOptions(c.icon)+'</select>'+
     '<div class="lbl" style="margin-top:10px">Title</div><input class="input mctitle" data-i="'+i+'" value="'+esc(c.title)+'">'+
     '<div class="lbl" style="margin-top:10px">Date / subtitle</div><input class="input mcdate" data-i="'+i+'" value="'+esc(c.date)+'">'+
     '<div class="lbl" style="margin-top:10px">Button label</div><input class="input mcbtn" data-i="'+i+'" value="'+esc(c.btn)+'">'+
-    '<div class="lbl" style="margin-top:10px">Button action</div><select class="input mcact" data-i="'+i+'">'+actionOptions(c.action)+'</select></div>';}).join("");
+    '<div class="lbl" style="margin-top:10px">Button action</div><select class="input mcact" data-i="'+i+'"'+(hasImg?' disabled':'')+'>'+actionOptions(c.action)+'</select>'+
+    '<div class="flyer-edit">'+
+      '<div class="lbl" style="margin-top:12px">Flyer image'+(hasImg?' <span class="on">✓ uploaded</span>':'')+'</div>'+
+      (hasImg?'<img class="fe-prev" src="'+c.flyerImg+'" alt="">':'')+
+      '<div class="fe-row"><label class="btn primary small" for="mcflyer'+i+'" style="cursor:pointer">'+(hasImg?'Replace flyer':'Upload flyer')+'</label>'+
+      (hasImg?'<button class="btn danger small mcflyerrm" data-i="'+i+'">Remove flyer</button>':'')+'</div>'+
+      '<input type="file" id="mcflyer'+i+'" class="mcflyerin" data-i="'+i+'" accept="image/*" style="display:none">'+
+      '<div class="fe-hint">When a flyer is uploaded, this card\'s button opens it. Remove it to use the button action above instead.</div>'+
+    '</div></div>';}).join("");
   function b(cls,p){[].forEach.call(w.querySelectorAll(cls),function(el){var h=function(){content.monthCards[+el.dataset.i][p]=el.value;};el.addEventListener("input",h);el.addEventListener("change",h);});}
   b(".mcicon","icon");b(".mctitle","title");b(".mcdate","date");b(".mcbtn","btn");b(".mcact","action");
+  [].forEach.call(w.querySelectorAll(".mcflyerin"),function(el){el.onchange=function(e){var f=e.target.files[0];if(!f||!/^image\//.test(f.type)){toast("Please choose an image");return;}
+    var idx=+el.dataset.i;shrinkImage(f,1400,function(data){content.monthCards[idx].flyerImg=data;buildMonthEdit();toast("Flyer added — press Save changes");});el.value="";};});
+  [].forEach.call(w.querySelectorAll(".mcflyerrm"),function(el){el.onclick=function(){delete content.monthCards[+el.dataset.i].flyerImg;buildMonthEdit();toast("Flyer removed — press Save changes");};});
 }
 function buildEventsEdit(){
   var w=document.getElementById("eventsEdit");
-  w.innerHTML=content.events.map(function(e,i){return '<div class="row-edit">'+
+  w.innerHTML=content.events.map(function(e,i){
+    var src=flyerSrcFor(e),hasImg=!!e.flyerImg,hasBuiltin=!hasImg&&e.flyer&&FEATURED_FLYERS[e.flyer];
+    return '<div class="ev-edit-wrap"><div class="row-edit">'+
     '<input class="input evdate" data-i="'+i+'" placeholder="Date" value="'+esc(e.date)+'">'+
     '<input class="input evname" data-i="'+i+'" placeholder="Event name" value="'+esc(e.name)+'">'+
     '<input class="input evnote" data-i="'+i+'" placeholder="Detail (time, note)" value="'+esc(e.note||"")+'">'+
-    '<span style="display:flex;gap:8px;align-items:center"><select class="input evicon" data-i="'+i+'" style="width:auto">'+iconOptions(e.icon)+'</select><button class="btn danger small evrm" data-i="'+i+'">✕</button></span></div>';}).join("");
+    '<span style="display:flex;gap:8px;align-items:center"><select class="input evicon" data-i="'+i+'" style="width:auto">'+iconOptions(e.icon)+'</select><button class="btn danger small evrm" data-i="'+i+'">✕</button></span></div>'+
+    '<div class="flyer-edit ev-flyer-edit">'+
+      (src?'<img class="fe-prev" src="'+src+'" alt="">':'')+
+      '<div class="fe-col">'+
+        '<div class="lbl" style="margin:0 0 6px">Event flyer'+(hasImg?' <span class="on">✓ uploaded</span>':(hasBuiltin?' <span class="on">✓ built-in</span>':' <span class="off">none</span>'))+'</div>'+
+        '<div class="fe-row"><label class="btn primary small" for="evflyer'+i+'" style="cursor:pointer">'+(src?'Replace flyer':'Upload flyer')+'</label>'+
+        (src?'<button class="btn danger small evflyerrm" data-i="'+i+'">Remove flyer</button>':'')+'</div>'+
+        '<input type="file" id="evflyer'+i+'" class="evflyerin" data-i="'+i+'" accept="image/*" style="display:none">'+
+        '<div class="fe-hint">Upload a flyer image for this event. Families tap the event card to view it.</div>'+
+      '</div>'+
+    '</div></div>';}).join("");
   [].forEach.call(w.querySelectorAll(".evdate"),function(el){el.oninput=function(){content.events[+el.dataset.i].date=el.value;};});
   [].forEach.call(w.querySelectorAll(".evname"),function(el){el.oninput=function(){content.events[+el.dataset.i].name=el.value;};});
   [].forEach.call(w.querySelectorAll(".evnote"),function(el){el.oninput=function(){content.events[+el.dataset.i].note=el.value;};});
   [].forEach.call(w.querySelectorAll(".evicon"),function(el){el.onchange=function(){content.events[+el.dataset.i].icon=el.value;};});
   [].forEach.call(w.querySelectorAll(".evrm"),function(el){el.onclick=function(){content.events.splice(+el.dataset.i,1);buildEventsEdit();};});
+  [].forEach.call(w.querySelectorAll(".evflyerin"),function(el){el.onchange=function(ev){var f=ev.target.files[0];if(!f||!/^image\//.test(f.type)){toast("Please choose an image");return;}
+    var idx=+el.dataset.i;shrinkImage(f,1400,function(data){content.events[idx].flyerImg=data;buildEventsEdit();toast("Flyer added — press Save changes");});el.value="";};});
+  [].forEach.call(w.querySelectorAll(".evflyerrm"),function(el){el.onclick=function(){var e=content.events[+el.dataset.i];delete e.flyerImg;buildEventsEdit();toast("Flyer removed — press Save changes");};});
 }
 function buildFlyerGrid(){
   var g=document.getElementById("flyerGrid");
   g.innerHTML=content.flyers.map(function(f,i){return '<div class="thumb"><button class="rm" data-i="'+i+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button><img src="'+f.img+'" alt=""><div class="cap">'+esc(f.name||"Flyer")+'</div></div>';}).join("");
   [].forEach.call(g.querySelectorAll(".rm"),function(el){el.onclick=function(){content.flyers.splice(+el.dataset.i,1);buildFlyerGrid();};});
 }
+// Shrink an uploaded image before storing it, so the saved site stays small.
+// Scales the longest side down to maxPx and re-encodes as JPEG. Falls back to
+// the original data URL if anything goes wrong.
+function shrinkImage(file,maxPx,cb){
+  maxPx=maxPx||1400;
+  var r=new FileReader();
+  r.onload=function(){
+    var dataUrl=r.result;
+    try{
+      var img=new Image();
+      img.onload=function(){
+        try{
+          var w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+          if(!w||!h){cb(dataUrl);return;}
+          var scale=Math.min(1, maxPx/Math.max(w,h));
+          var nw=Math.round(w*scale), nh=Math.round(h*scale);
+          var c=document.createElement("canvas");c.width=nw;c.height=nh;
+          var ctx=c.getContext("2d");
+          ctx.fillStyle="#fff";ctx.fillRect(0,0,nw,nh);
+          ctx.drawImage(img,0,0,nw,nh);
+          var out=c.toDataURL("image/jpeg",0.82);
+          cb(out&&out.length<dataUrl.length?out:dataUrl);
+        }catch(e){cb(dataUrl);}
+      };
+      img.onerror=function(){cb(dataUrl);};
+      img.src=dataUrl;
+    }catch(e){cb(dataUrl);}
+  };
+  r.onerror=function(){toast("Couldn't read that image — try another file");};
+  r.readAsDataURL(file);
+}
 function handleFlyers(files){var arr=[].slice.call(files).filter(function(f){return /^image\//.test(f.type);});var n=arr.length;if(!n){toast("Please choose image files");return;}
-  arr.forEach(function(f){var r=new FileReader();r.onload=function(){content.flyers.push({name:f.name.replace(/\.[^.]+$/,""),img:r.result});n--;if(n===0){buildFlyerGrid();toast("Flyer added — press Save changes");}};r.readAsDataURL(f);});}
+  arr.forEach(function(f){shrinkImage(f,1400,function(data){content.flyers.push({name:f.name.replace(/\.[^.]+$/,""),img:data});n--;if(n===0){buildFlyerGrid();toast("Flyer added — press Save changes");}});});}
 function bindCalFile(inputId,key,prevId,which){
   var el=document.getElementById(inputId);if(!el)return;
   el.onchange=function(e){var f=e.target.files[0];if(!f||!/^image\//.test(f.type)){toast("Please choose an image");return;}
-    var r=new FileReader();r.onload=function(){content[key]=r.result;document.getElementById(prevId).src=r.result;toast("Calendar updated — press Save changes");};r.readAsDataURL(f);el.value="";};
+    shrinkImage(f,1600,function(data){content[key]=data;var p=document.getElementById(prevId);if(p)p.src=data;toast("Image updated — press Save changes");});el.value="";};
 }
 function exportContent(){collectLinks();dl(new Blob([JSON.stringify(content,null,2)],{type:"application/json"}),"family-hub-settings.json");toast("Settings exported");}
 function dl(blob,name){var u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=name;a.click();setTimeout(function(){URL.revokeObjectURL(u);},1000);}
