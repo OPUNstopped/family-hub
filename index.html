@@ -87,7 +87,7 @@
   .link-more svg{width:16px;height:16px;}
 
   /* calendars */
-  .cal-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
+  .cal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;}
   .cal-card{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow);cursor:pointer;transition:transform .15s,box-shadow .15s;}
   .cal-card:hover{transform:translateY(-3px);box-shadow:0 14px 28px rgba(27,46,76,.10);}
   .cal-card .thumb{height:230px;background:#fff;overflow:hidden;display:flex;align-items:flex-start;justify-content:center;}
@@ -98,13 +98,14 @@
   .cal-card .cc-link{color:var(--green-soft);font-size:.76rem;letter-spacing:.09em;text-transform:uppercase;font-weight:600;white-space:nowrap;}
 
   /* flyers */
+  .empty-note{text-align:center;color:var(--muted);font-style:italic;padding:34px 10px;border:1px dashed var(--line);border-radius:14px;background:#fffdf7;}
   .flyers-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px;}
   .flyer{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);cursor:pointer;}
   .flyer img{width:100%;height:auto;display:block;background:#fff;}
   .flyer .cap{padding:12px 16px;font-family:"Cormorant Garamond",serif;color:var(--navy-head);font-size:1rem;}
 
   /* quick links */
-  .qgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:16px;}
+  .qgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:16px;}
   .qtile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px 10px 16px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;transition:transform .15s,box-shadow .15s,border-color .15s;}
   .qtile:hover{transform:translateY(-3px);box-shadow:0 10px 20px rgba(27,46,76,.08);border-color:#D9CFB8;}
   .qtile svg{width:34px;height:34px;color:var(--green);}
@@ -215,6 +216,18 @@
   .privacy-foot{margin-top:24px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:.9rem;}
   @media(max-width:620px){.privacy-card{padding:30px 22px 34px;}}
 
+  /* ===== newsletters page (its own screen, not part of the home page) ===== */
+  #newslettersPage{display:none;min-height:100vh;background:var(--cream);}
+  body.news-mode #site{display:none;}
+  body.news-mode #newslettersPage{display:block;}
+  .np-bar{background:var(--navy);color:#fff;position:sticky;top:0;z-index:20;}
+  .np-bar .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:16px;padding-bottom:16px;flex-wrap:wrap;}
+  .np-back{display:inline-flex;align-items:center;gap:8px;color:#E8DFC9;text-decoration:none;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;font-weight:600;}
+  .np-back:hover{color:#fff;}
+  .np-back svg{width:18px;height:18px;}
+  .np-brand{display:flex;align-items:center;gap:12px;font-family:"Cormorant Garamond",serif;font-size:1.25rem;}
+  .np-brand svg{width:26px;height:26px;color:#9BB07E;}
+
   /* ===== admin ===== */
   #admin{display:none;min-height:100vh;background:var(--cream);}
   body.admin-mode #site{display:none;}
@@ -275,6 +288,9 @@
   .thumb{position:relative;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;}
   .thumb img{width:100%;height:120px;object-fit:cover;object-position:top;display:block;}
   .thumb .cap{padding:6px 8px;font-size:.78rem;color:var(--navy-head);}
+  .thumb .cap-edit{display:block;width:100%;box-sizing:border-box;border:0;border-top:1px solid var(--line);padding:8px;font-family:inherit;font-size:.78rem;color:var(--navy-head);background:#fff;}
+  .thumb .cap-edit::placeholder{color:#a49b88;font-style:italic;}
+  .thumb .cap-edit:focus{outline:2px solid var(--green-soft);outline-offset:-2px;background:#fffdf7;}
   .thumb .rm{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.92);border:1px solid var(--line);cursor:pointer;color:#a23a2a;display:flex;align-items:center;justify-content:center;}
   .thumb .rm svg{width:14px;height:14px;}
   .vtable{width:100%;border-collapse:collapse;font-size:.92rem;}
@@ -409,11 +425,15 @@
 <section class="sec" id="calendars">
   <div class="wrap">
     <div class="sec-head"><span class="hline"></span><span class="htext"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>Our Calendars</span><span class="hline"></span></div>
-    <p class="sec-sub">Tap a calendar to view the full year. Both are kept up to date by the school and PTA.</p>
+    <p class="sec-sub">Tap a calendar to view the full year. Each campus has its own calendar, and all are kept up to date by the school and PTA.</p>
     <div class="cal-grid">
-      <div class="cal-card" data-cal="school">
-        <div class="thumb"><img id="calSchoolThumb" src="" alt="2026–2027 School Calendar"></div>
-        <div class="cc-body"><span class="cc-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>School Calendar</span><span class="cc-link">View full &rarr;</span></div>
+      <div class="cal-card" data-cal="bb">
+        <div class="thumb"><img id="calBbThumb" src="" alt="2026–2027 BB School Calendar"></div>
+        <div class="cc-body"><span class="cc-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>BB School Calendar</span><span class="cc-link">View full &rarr;</span></div>
+      </div>
+      <div class="cal-card" data-cal="km">
+        <div class="thumb"><img id="calKmThumb" src="" alt="2026–2027 KM School Calendar"></div>
+        <div class="cc-body"><span class="cc-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>KM School Calendar</span><span class="cc-link">View full &rarr;</span></div>
       </div>
       <div class="cal-card" data-cal="pta">
         <div class="thumb"><img id="calPtaThumb" src="" alt="2026–2027 PTA Calendar of Events"></div>
@@ -434,8 +454,8 @@
   <div class="wrap">
     <div class="sec-head"><span class="hline"></span><span class="htext"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M10 13a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1"/><path d="M14 11a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1"/></svg>Quick Links</span><span class="hline"></span></div>
     <div class="qgrid">
-      <div class="qtile" data-cal="school"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><span>School<br>Calendar</span></div>
       <div class="qtile" data-cal="pta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M12 12.5l1 2 2 .3-1.5 1.4.4 2-1.9-1-1.9 1 .4-2L9 14.8l2-.3z" fill="currentColor" stroke="none"/></svg><span>PTA<br>Calendar</span></div>
+      <div class="qtile" data-scroll="#newsletters"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 5h13a1 1 0 011 1v13H5a1 1 0 01-1-1z"/><path d="M18 9h2a1 1 0 011 1v8a1 1 0 01-1 1h-2"/><path d="M7 8h7M7 11.5h7M7 15h4"/></svg><span>PTA<br>Newsletters</span></div>
       <div class="qtile" data-scroll="#volunteer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="6" r="2.4"/><path d="M12 8.5V13M8 11l4-2 4 2M12 13l-3 7M12 13l3 7"/></svg><span>Volunteer</span></div>
       <div class="qtile" data-scroll="#upcoming"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 3l1.5 3M19 3l-1.5 3M12 2v4"/><path d="M4 9h16l-2 11H6z"/><path d="M9 13v4M15 13v4M12 12v6"/></svg><span>Upcoming<br>Events</span></div>
       <div class="qtile" data-scroll="#rsvp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M8.5 14.5l2.2 2.2 4.3-4.3"/></svg><span>RSVP for<br>an Event</span></div>
@@ -525,6 +545,24 @@
 </footer>
 
 </div><!-- /#site -->
+
+<div id="newslettersPage">
+  <div class="np-bar">
+    <div class="wrap">
+      <a class="np-back" href="#home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>Back to the Family Hub</a>
+      <span class="np-brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h13a1 1 0 011 1v13H5a1 1 0 01-1-1z"/><path d="M18 9h2a1 1 0 011 1v8a1 1 0 01-1 1h-2"/><path d="M7 8h7M7 11.5h7M7 15h4"/></svg>PTA Newsletters</span>
+    </div>
+  </div>
+  <section class="sec">
+    <div class="wrap">
+      <div class="sec-head"><span class="hline"></span><span class="htext"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5h13a1 1 0 011 1v13H5a1 1 0 01-1-1z"/><path d="M18 9h2a1 1 0 011 1v8a1 1 0 01-1 1h-2"/><path d="M7 8h7M7 11.5h7M7 15h4"/></svg>PTA Newsletters</span><span class="hline"></span></div>
+      <p class="sec-sub">Catch up on news from the PTA. Tap any newsletter to read it full size or download a copy.</p>
+      <div class="flyers-grid" id="newslettersGrid"></div>
+      <p class="empty-note" id="newslettersEmpty">No newsletters have been posted yet — check back soon.</p>
+      <div style="text-align:center;margin-top:38px"><a class="btn ghost" href="#home">&larr; Back to the Family Hub</a></div>
+    </div>
+  </section>
+</div>
 
 <div id="admin"></div>
 
@@ -629,7 +667,7 @@ var DEFAULTS={
   donateUrl:"mailto:miltonmpta@gmail.com?subject=Donate to the PTA",
   volunteerIntro:"We'd love your help! Share your details below and let us know which event you'd like to lend a hand with. Every bit of support makes our community stronger.",
   rsvpIntro:"Planning to join us? Let us know you're coming and how many, so we can save your spot.",
-  heroOverride:"", calSchoolOverride:"", calPtaOverride:"",
+  heroOverride:"", calBbOverride:"", calKmOverride:"", calSchoolOverride:"", calPtaOverride:"",
   monthCards:[
     {icon:"coffee",title:"Back-to-School Breakfast Social",date:"August 8 (Sat)",btn:"Event Details",action:"flyer:breakfast"},
     {icon:"community",title:"PTA Kick-Off Meeting",date:"September 10 (Thu)",btn:"Event Details",action:"cal:pta"},
@@ -650,7 +688,8 @@ var DEFAULTS={
     {date:"May 3–7",      name:"Teacher Appreciation Week", note:"Mon – Fri", icon:"flower"},
     {date:"May 28 (Fri)", name:"Graduation Celebration", note:"Congratulations, graduates!", icon:"grad", flyer:"graduation"}
   ],
-  flyers:[]
+  flyers:[],
+  newsletters:[]
 };
 
 // ---- Content: loaded from the server so every device shows the same site ----
@@ -674,7 +713,17 @@ function saveContent(){
     .then(function(r){if(!r.ok)throw new Error("save failed");return true;});
 }
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(m){return{"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[m];});}
-function calSrc(w){return w==="school"?(content.calSchoolOverride||EMBED.calSchool):(content.calPtaOverride||EMBED.calPta);}
+// Shown on a calendar card that has no image uploaded yet, so a campus never
+// displays another campus's calendar by mistake.
+var CAL_PLACEHOLDER="data:image/svg+xml;utf8,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="900" height="700"><rect width="900" height="700" fill="#F7F4EC"/><rect x="24" y="24" width="852" height="652" rx="20" fill="none" stroke="#D9CFB8" stroke-width="3"/><text x="450" y="330" text-anchor="middle" font-family="Georgia,serif" font-size="44" fill="#1B2E4C">Calendar coming soon</text><text x="450" y="392" text-anchor="middle" font-family="Georgia,serif" font-size="26" fill="#5C7A49">A PTA admin can upload this calendar image</text></svg>');
+// Each calendar is its own key. "school" is the old single-calendar key, kept so
+// an image uploaded before the two campuses were split still shows up under BB.
+function calSrc(w){
+  if(w==="pta")return content.calPtaOverride||EMBED.calPta;
+  if(w==="km")return content.calKmOverride||CAL_PLACEHOLDER;
+  return content.calBbOverride||content.calSchoolOverride||EMBED.calSchool;
+}
+function calTitle(w){ return w==="pta"?"2026–2027 PTA Calendar of Events":(w==="km"?"2026–2027 KM School Calendar":"2026–2027 BB School Calendar"); }
 
 // ---- Submissions: an in-memory cache filled from the server -----------------
 // The admin dashboard fetches the real, central lists. These accessors return
@@ -689,8 +738,8 @@ function saveRsvp(v){_rsvpCache=v||[];}
 /* ---------- render public ---------- */
 // Resolve the flyer image for an event or month card.
 // Priority: an uploaded image (flyerImg) first, then a built-in flyer key.
-function flyerSrcFor(o){ if(!o)return ""; if(o.flyerImg)return o.flyerImg; if(o.flyer&&FEATURED_FLYERS[o.flyer])return FEATURED_FLYERS[o.flyer].src; return ""; }
-function flyerTitleFor(o){ if(!o)return "Flyer"; if(o.flyerImg)return o.name||"Flyer"; if(o.flyer&&FEATURED_FLYERS[o.flyer])return FEATURED_FLYERS[o.flyer].title; return o.name||"Flyer"; }
+function flyerSrcFor(o){ if(!o)return ""; if(o.flyerImg)return o.flyerImg; if(o.noFlyer)return ""; if(o.flyer&&FEATURED_FLYERS[o.flyer])return FEATURED_FLYERS[o.flyer].src; return ""; }
+function flyerTitleFor(o){ if(!o)return "Flyer"; if(o.flyerImg)return o.name||"Flyer"; if(o.noFlyer)return o.name||"Flyer"; if(o.flyer&&FEATURED_FLYERS[o.flyer])return FEATURED_FLYERS[o.flyer].title; return o.name||"Flyer"; }
 function doAction(a,ctx){ if(!a)return;
   if(a==="flyerimg"){ if(ctx)openImg(ctx,arguments[2]||"Flyer"); return; }
   if(a.indexOf("cal:")===0)openCal(a.slice(4));
@@ -713,7 +762,8 @@ function renderAll(){
   document.getElementById("donateTile").href=content.donateUrl||"#";
   document.getElementById("volIntro").textContent=content.volunteerIntro;
   var ri=document.getElementById("rsvpIntro"); if(ri)ri.textContent=content.rsvpIntro;
-  document.getElementById("calSchoolThumb").src=calSrc("school");
+  document.getElementById("calBbThumb").src=calSrc("bb");
+  document.getElementById("calKmThumb").src=calSrc("km");
   document.getElementById("calPtaThumb").src=calSrc("pta");
 
   document.getElementById("monthCards").innerHTML=content.monthCards.map(function(c,i){
@@ -742,6 +792,15 @@ function renderAll(){
     [].forEach.call(fg.querySelectorAll(".flyer"),function(el,i){el.addEventListener("click",function(){openImg(content.flyers[i].img,content.flyers[i].name||"Flyer");});});
   } else {fsec.style.display="none";fg.innerHTML="";}
 
+  // Newsletters. Unlike flyers, this section always stays on the page because a
+  // Quick Link points at it — an empty note is shown instead of hiding it.
+  var ng=document.getElementById("newslettersGrid"),nEmpty=document.getElementById("newslettersEmpty");
+  var nl=content.newsletters||[];
+  if(nl.length){nEmpty.style.display="none";ng.style.display="";
+    ng.innerHTML=nl.map(function(f){return '<div class="flyer"><img src="'+f.img+'" alt="'+esc(f.name||"Newsletter")+'"><div class="cap">'+esc(f.name||"Newsletter")+'</div></div>';}).join("");
+    [].forEach.call(ng.querySelectorAll(".flyer"),function(el,i){el.addEventListener("click",function(){openImg(nl[i].img,nl[i].name||"Newsletter");});});
+  } else {nEmpty.style.display="";ng.style.display="none";ng.innerHTML="";}
+
   [].forEach.call(document.querySelectorAll("[data-act]"),function(b){b.onclick=function(){
     var act=b.getAttribute("data-act");
     if(act==="flyerimg"){var mc=content.monthCards[+b.getAttribute("data-mc")];if(mc&&mc.flyerImg)openImg(mc.flyerImg,mc.title||"Flyer");return;}
@@ -749,7 +808,7 @@ function renderAll(){
 }
 
 /* ---------- navigation ---------- */
-function scrollToSel(sel){ if(sel==="#admin"){location.hash="#admin";return;} var el=document.querySelector(sel); if(el)el.scrollIntoView({behavior:"smooth"}); }
+function scrollToSel(sel){ if(sel==="#admin"||sel==="#newsletters"){location.hash=sel;return;} var el=document.querySelector(sel); if(el)el.scrollIntoView({behavior:"smooth"}); }
 document.addEventListener("click",function(e){
   var s=e.target.closest("[data-scroll]"); if(s){e.preventDefault();scrollToSel(s.getAttribute("data-scroll"));return;}
   var c=e.target.closest("[data-cal]"); if(c){e.preventDefault();openCal(c.getAttribute("data-cal"));}
@@ -759,7 +818,7 @@ document.addEventListener("click",function(e){
 var lb=document.getElementById("lightbox");
 function openImg(src,title){document.getElementById("lbImg").src=src;document.getElementById("lbTitle").textContent=title||"";
   var d=document.getElementById("lbDownload");d.href=src;d.download=(title||"image").replace(/\s+/g,"-").toLowerCase()+".jpg";lb.classList.add("show");}
-function openCal(w){openImg(calSrc(w), w==="school"?"2026–2027 School Calendar":"2026–2027 PTA Calendar of Events");}
+function openCal(w){openImg(calSrc(w), calTitle(w));}
 document.getElementById("lbClose").onclick=function(){lb.classList.remove("show");};
 lb.addEventListener("click",function(e){if(e.target===lb)lb.classList.remove("show");});
 document.addEventListener("keydown",function(e){if(e.key==="Escape")lb.classList.remove("show");});
@@ -859,17 +918,25 @@ function toast(m){toastEl.textContent=m;toastEl.classList.add("show");clearTimeo
 
 /* ---------- router / admin ---------- */
 function isAdminRoute(){var p=location.pathname.replace(/\/+$/,"");return location.hash==="#admin"||location.hash==="#login"||/\/admin$/i.test(p);}
+// The newsletters page is its own screen, reached only from the Quick Links tile
+// (or a direct /newsletters link). It never appears on the home page.
+function isNewsRoute(){var p=location.pathname.replace(/\/+$/,"");return location.hash==="#newsletters"||/\/newsletters$/i.test(p);}
 var authed=false; // real auth state comes from the server session, checked below
 function route(){
+  var b=document.body;
   if(isAdminRoute()){
-    document.body.classList.add("admin-mode");window.scrollTo(0,0);
+    b.classList.remove("news-mode");
+    b.classList.add("admin-mode");window.scrollTo(0,0);
     // Ask the server whether this browser has a valid admin session.
     document.getElementById("admin").innerHTML='<div class="login-shell"><div class="login-card"><h2>Loading…</h2></div></div>';
     fetch("/api/session",{headers:{"Accept":"application/json"}})
       .then(function(r){return r.json();})
       .then(function(d){authed=!!d.authed;authed?renderDashboard():renderLogin();window.scrollTo(0,0);})
       .catch(function(){authed=false;renderLogin();});
-  } else {document.body.classList.remove("admin-mode");}
+  } else if(isNewsRoute()){
+    b.classList.remove("admin-mode");
+    b.classList.add("news-mode");window.scrollTo(0,0);
+  } else {b.classList.remove("admin-mode");b.classList.remove("news-mode");}
 }
 window.addEventListener("hashchange",route);
 
@@ -909,7 +976,7 @@ function renderLogin(){
 }
 
 function iconOptions(sel){return ICON_KEYS.map(function(k){return '<option value="'+k+'"'+(k===sel?' selected':'')+'>'+k+'</option>';}).join("");}
-function actionOptions(sel){var o=[["scroll:#volunteer","Go to Volunteer form"],["flyer:breakfast","Open the Breakfast flyer"],["cal:pta","Open PTA calendar"],["cal:school","Open School calendar"],["scroll:#upcoming","Go to Upcoming Events"],["scroll:#contact","Go to Contact"]];
+function actionOptions(sel){var o=[["scroll:#volunteer","Go to Volunteer form"],["flyer:breakfast","Open the Breakfast flyer"],["cal:pta","Open PTA calendar"],["cal:bb","Open BB School calendar"],["cal:km","Open KM School calendar"],["scroll:#upcoming","Go to Upcoming Events"],["scroll:#contact","Go to Contact"]];
   return o.map(function(x){return '<option value="'+x[0]+'"'+(x[0]===sel?' selected':'')+'>'+x[1]+'</option>';}).join("");}
 
 function renderDashboard(){
@@ -942,17 +1009,23 @@ function renderDashboard(){
 
     '<div class="panel"><h3>'+icon("star")+'Upcoming Events</h3><p class="hint">Date, name and a short detail line for each event.</p><div id="eventsEdit"></div><button class="btn primary small add-btn" id="addEvent">+ Add event</button></div>'+
 
-    '<div class="panel"><h3>'+icon("calendar")+'Images &amp; calendars</h3><p class="hint">Replace the hero photo or either calendar image (JPG or PNG). Leave as-is to keep the current one.</p>'+
+    '<div class="panel"><h3>'+icon("calendar")+'Images &amp; calendars</h3><p class="hint">Replace the hero photo or any calendar image (JPG or PNG). BB and KM are separate campuses — each has its own calendar image. Leave a box as-is to keep the current image.</p>'+
       '<div class="cal-edit">'+
         '<div class="box"><div style="font-weight:600;color:var(--navy-head);margin-bottom:8px">Hero photo</div><img id="heroPrev" src=""><label class="btn primary small" for="heroFile" style="cursor:pointer">Replace image</label><input type="file" id="heroFile" accept="image/*" style="display:none"></div>'+
-        '<div class="box"><div style="font-weight:600;color:var(--navy-head);margin-bottom:8px">School Calendar</div><img id="calSchoolPrev" src=""><label class="btn primary small" for="calSchoolFile" style="cursor:pointer">Replace image</label><input type="file" id="calSchoolFile" accept="image/*" style="display:none"></div>'+
+        '<div class="box"><div style="font-weight:600;color:var(--navy-head);margin-bottom:8px">BB School Calendar</div><img id="calBbPrev" src=""><label class="btn primary small" for="calBbFile" style="cursor:pointer">Replace image</label><input type="file" id="calBbFile" accept="image/*" style="display:none"></div>'+
+        '<div class="box"><div style="font-weight:600;color:var(--navy-head);margin-bottom:8px">KM School Calendar</div><img id="calKmPrev" src=""><label class="btn primary small" for="calKmFile" style="cursor:pointer">Replace image</label><input type="file" id="calKmFile" accept="image/*" style="display:none"></div>'+
         '<div class="box"><div style="font-weight:600;color:var(--navy-head);margin-bottom:8px">PTA Calendar of Events</div><img id="calPtaPrev" src=""><label class="btn primary small" for="calPtaFile" style="cursor:pointer">Replace image</label><input type="file" id="calPtaFile" accept="image/*" style="display:none"></div>'+
       '</div></div>'+
 
     '<div class="panel"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Flyers &amp; announcements</h3>'+
-      '<p class="hint">Upload flyer images — they appear in a “Flyers &amp; Announcements” section on the home page.</p>'+
+      '<p class="hint">Upload flyer images — they appear in a “Flyers &amp; Announcements” section on the home page. Give each one a name and it shows as the caption.</p>'+
       '<label class="drop" for="flyerInput"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg><div><strong>Click to upload a flyer</strong><br>or drop an image here</div></label>'+
       '<input type="file" id="flyerInput" accept="image/*" multiple style="display:none"><div class="thumb-grid" id="flyerGrid"></div></div>'+
+
+    '<div class="panel"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h13a1 1 0 011 1v13H5a1 1 0 01-1-1z"/><path d="M18 9h2a1 1 0 011 1v8a1 1 0 01-1 1h-2"/><path d="M7 8h7M7 11.5h7M7 15h4"/></svg>PTA Newsletters</h3>'+
+      '<p class="hint">Upload each newsletter as an image (JPG or PNG). They appear on the PTA Newsletters page, which families reach by clicking the “PTA Newsletters” tile in Quick Links. Nothing shows on the home page itself. Name each one — for example “September 2026 Newsletter” — and that name shows under it. They appear on the site in the same order you see them here.</p>'+
+      '<label class="drop" for="newsInput"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg><div><strong>Click to upload a newsletter</strong><br>or drop an image here</div></label>'+
+      '<input type="file" id="newsInput" accept="image/*" multiple style="display:none"><div class="thumb-grid" id="newsGrid"></div></div>'+
 
     '<div class="panel"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 13a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1"/><path d="M14 11a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1"/></svg>Links &amp; contact</h3><p class="hint">Buttons, RSVP, donate, email and social links.</p>'+
       '<div class="grid2">'+f("ProCare login link","procareUrl")+f("Donate link","donateUrl")+f("PTA email","email")+f("Website (footer)","website")+f("Instagram link","instagram")+f("Instagram handle","instagramHandle")+f("Facebook link (blank = hidden)","facebook")+f("Logo image link (blank = built-in)","logoUrl")+'</div>'+
@@ -963,9 +1036,10 @@ function renderDashboard(){
   '</div></div>'+
   '<div class="savebar"><div class="wrap"><span class="status" id="saveStatus">Changes are kept in this browser until saved.</span><button class="btn primary" id="saveBtn">Save changes</button></div></div>';
 
-  buildVolTable();buildRsvpTable();buildMonthEdit();buildEventsEdit();buildFlyerGrid();
+  buildVolTable();buildRsvpTable();buildMonthEdit();buildEventsEdit();buildFlyerGrid();buildNewsGrid();
   document.getElementById("heroPrev").src=content.heroOverride||EMBED.hero;
-  document.getElementById("calSchoolPrev").src=calSrc("school");
+  document.getElementById("calBbPrev").src=calSrc("bb");
+  document.getElementById("calKmPrev").src=calSrc("km");
   document.getElementById("calPtaPrev").src=calSrc("pta");
 
   // Pull the real, central sign-up lists from the server and refresh the tables.
@@ -1003,13 +1077,11 @@ function renderDashboard(){
     fetch("/api/submissions?clear=rsvp",{method:"DELETE"}).then(function(r){if(!r.ok)throw 0;_rsvpCache=[];buildRsvpTable();
       var h=document.querySelectorAll(".panel h3")[1];if(h)h.innerHTML=icon("calendar")+"Event RSVPs (0)";toast("Cleared");})
       .catch(function(){toast("Could not clear — try again");});}};
-  var fi=document.getElementById("flyerInput");fi.onchange=function(e){handleFlyers(e.target.files);fi.value="";};
-  var drop=document.querySelector(".drop");
-  ["dragover","dragenter"].forEach(function(ev){drop.addEventListener(ev,function(e){e.preventDefault();drop.style.borderColor="#5C7A49";});});
-  ["dragleave","drop"].forEach(function(ev){drop.addEventListener(ev,function(e){e.preventDefault();drop.style.borderColor="";});});
-  drop.addEventListener("drop",function(e){if(e.dataTransfer&&e.dataTransfer.files)handleFlyers(e.dataTransfer.files);});
+  bindUploader("flyerInput",handleFlyers);
+  bindUploader("newsInput",handleNews);
   bindCalFile("heroFile","heroOverride","heroPrev","hero");
-  bindCalFile("calSchoolFile","calSchoolOverride","calSchoolPrev","school");
+  bindCalFile("calBbFile","calBbOverride","calBbPrev","bb");
+  bindCalFile("calKmFile","calKmOverride","calKmPrev","km");
   bindCalFile("calPtaFile","calPtaOverride","calPtaPrev","pta");
 }
 function f(label,key){return '<div class="field"><label>'+label+'</label><input class="input" id="f_'+key+'" value="'+esc(content[key]||"")+'"></div>';}
@@ -1109,13 +1181,35 @@ function buildEventsEdit(){
   [].forEach.call(w.querySelectorAll(".evicon"),function(el){el.onchange=function(){content.events[+el.dataset.i].icon=el.value;};});
   [].forEach.call(w.querySelectorAll(".evrm"),function(el){el.onclick=function(){content.events.splice(+el.dataset.i,1);buildEventsEdit();};});
   [].forEach.call(w.querySelectorAll(".evflyerin"),function(el){el.onchange=function(ev){var f=ev.target.files[0];if(!f||!/^image\//.test(f.type)){toast("Please choose an image");return;}
-    var idx=+el.dataset.i;shrinkImage(f,1400,function(data){content.events[idx].flyerImg=data;buildEventsEdit();toast("Flyer added — press Save changes");});el.value="";};});
-  [].forEach.call(w.querySelectorAll(".evflyerrm"),function(el){el.onclick=function(){var e=content.events[+el.dataset.i];delete e.flyerImg;buildEventsEdit();toast("Flyer removed — press Save changes");};});
+    var idx=+el.dataset.i;shrinkImage(f,1400,function(data){var e=content.events[idx];e.flyerImg=data;delete e.noFlyer;buildEventsEdit();toast("Flyer added — press Save changes");});el.value="";};});
+  [].forEach.call(w.querySelectorAll(".evflyerrm"),function(el){el.onclick=function(){var e=content.events[+el.dataset.i];delete e.flyerImg;e.noFlyer=true;buildEventsEdit();toast("Flyer removed — press Save changes");};});
 }
-function buildFlyerGrid(){
-  var g=document.getElementById("flyerGrid");
-  g.innerHTML=content.flyers.map(function(f,i){return '<div class="thumb"><button class="rm" data-i="'+i+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button><img src="'+f.img+'" alt=""><div class="cap">'+esc(f.name||"Flyer")+'</div></div>';}).join("");
-  [].forEach.call(g.querySelectorAll(".rm"),function(el){el.onclick=function(){content.flyers.splice(+el.dataset.i,1);buildFlyerGrid();};});
+// Builds an editable upload grid, used for both flyers and newsletters.
+// Each tile gets a name box the admin can type into and a remove button.
+function buildUploadGrid(gridId,listKey,placeholder){
+  var g=document.getElementById(gridId); if(!g)return;
+  if(!content[listKey])content[listKey]=[];
+  var list=content[listKey];
+  if(!list.length){g.innerHTML='<p class="hint" style="grid-column:1/-1;margin:6px 0 0">Nothing uploaded yet.</p>';return;}
+  g.innerHTML=list.map(function(f,i){
+    return '<div class="thumb"><button class="rm" data-i="'+i+'" title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>'+
+      '<img src="'+f.img+'" alt=""><input class="cap-edit" data-i="'+i+'" value="'+esc(f.name||"")+'" placeholder="'+placeholder+'"></div>';
+  }).join("");
+  [].forEach.call(g.querySelectorAll(".rm"),function(el){el.onclick=function(){
+    list.splice(+el.getAttribute("data-i"),1);buildUploadGrid(gridId,listKey,placeholder);};});
+  [].forEach.call(g.querySelectorAll(".cap-edit"),function(el){el.oninput=function(){
+    list[+el.getAttribute("data-i")].name=el.value;};});
+}
+function buildFlyerGrid(){buildUploadGrid("flyerGrid","flyers","Name this flyer");}
+function buildNewsGrid(){buildUploadGrid("newsGrid","newsletters","Name this newsletter");}
+// Wires a file input plus its matching drag-and-drop label.
+function bindUploader(inputId,handler){
+  var inp=document.getElementById(inputId); if(!inp)return;
+  inp.onchange=function(e){handler(e.target.files);inp.value="";};
+  var drop=document.querySelector('.drop[for="'+inputId+'"]'); if(!drop)return;
+  ["dragover","dragenter"].forEach(function(ev){drop.addEventListener(ev,function(e){e.preventDefault();drop.style.borderColor="#5C7A49";});});
+  ["dragleave","drop"].forEach(function(ev){drop.addEventListener(ev,function(e){e.preventDefault();drop.style.borderColor="";});});
+  drop.addEventListener("drop",function(e){if(e.dataTransfer&&e.dataTransfer.files)handler(e.dataTransfer.files);});
 }
 // Shrink an uploaded image before storing it, so the saved site stays small.
 // Scales the longest side down to maxPx and re-encodes as JPEG. Falls back to
@@ -1148,8 +1242,15 @@ function shrinkImage(file,maxPx,cb){
   r.onerror=function(){toast("Couldn't read that image — try another file");};
   r.readAsDataURL(file);
 }
-function handleFlyers(files){var arr=[].slice.call(files).filter(function(f){return /^image\//.test(f.type);});var n=arr.length;if(!n){toast("Please choose image files");return;}
-  arr.forEach(function(f){shrinkImage(f,1400,function(data){content.flyers.push({name:f.name.replace(/\.[^.]+$/,""),img:data});n--;if(n===0){buildFlyerGrid();toast("Flyer added — press Save changes");}});});}
+function handleUploads(files,listKey,rebuild,label){
+  var arr=[].slice.call(files).filter(function(f){return /^image\//.test(f.type);});var n=arr.length;
+  if(!n){toast("Please choose image files");return;}
+  if(!content[listKey])content[listKey]=[];
+  arr.forEach(function(f){shrinkImage(f,1400,function(data){
+    content[listKey].push({name:f.name.replace(/\.[^.]+$/,""),img:data});
+    n--;if(n===0){rebuild();toast(label+" added — name it, then press Save changes");}});});}
+function handleFlyers(files){handleUploads(files,"flyers",buildFlyerGrid,"Flyer");}
+function handleNews(files){handleUploads(files,"newsletters",buildNewsGrid,"Newsletter");}
 function bindCalFile(inputId,key,prevId,which){
   var el=document.getElementById(inputId);if(!el)return;
   el.onchange=function(e){var f=e.target.files[0];if(!f||!/^image\//.test(f.type)){toast("Please choose an image");return;}
