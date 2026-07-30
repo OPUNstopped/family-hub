@@ -306,7 +306,7 @@
   .savebar .wrap{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
   .savebar .status{color:var(--green-soft);font-size:.9rem;}
   .add-btn{margin-top:4px;}
-  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--navy);color:#fff;padding:12px 22px;border-radius:10px;font-size:.9rem;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:300;box-shadow:var(--shadow);}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--navy);color:#fff;padding:12px 22px;border-radius:10px;font-size:.9rem;line-height:1.45;max-width:min(520px,calc(100vw - 40px));text-align:center;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:300;box-shadow:var(--shadow);}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
   @media(max-width:900px){
@@ -418,7 +418,6 @@
   <div class="wrap">
     <div class="sec-head"><span class="hline"></span><span class="htext"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>This Month at Milton Montessori</span><span class="hline"></span></div>
     <div class="cards3" id="monthCards"></div>
-    <div class="link-more"><a data-cal="pta">View Full PTA Calendar <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div>
   </div>
 </section>
 
@@ -707,10 +706,11 @@ function syncContentFromServer(cb){
 }
 // Save content to the server (admin only). Falls back to local cache on failure.
 function saveContent(){
-  LS.set("mmfh_content",JSON.stringify(content)); // local mirror
+  var body=JSON.stringify(content);
+  LS.set("mmfh_content",body); // local mirror
   return fetch("/api/content",{method:"PUT",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(content)})
-    .then(function(r){if(!r.ok)throw new Error("save failed");return true;});
+    body:body})
+    .then(function(r){if(!r.ok){var e=new Error("save failed");e.status=r.status;e.size=body.length;throw e;}return true;});
 }
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(m){return{"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[m];});}
 // Shown on a calendar card that has no image uploaded yet, so a campus never
@@ -914,7 +914,7 @@ function bindRsvp(){
 
 /* ---------- toast ---------- */
 var toastEl=document.getElementById("toast"),toastT;
-function toast(m){toastEl.textContent=m;toastEl.classList.add("show");clearTimeout(toastT);toastT=setTimeout(function(){toastEl.classList.remove("show");},1900);}
+function toast(m,ms){toastEl.textContent=m;toastEl.classList.add("show");clearTimeout(toastT);toastT=setTimeout(function(){toastEl.classList.remove("show");},ms||1900);}
 
 /* ---------- router / admin ---------- */
 function isAdminRoute(){var p=location.pathname.replace(/\/+$/,"");return location.hash==="#admin"||location.hash==="#login"||/\/admin$/i.test(p);}
@@ -1062,7 +1062,14 @@ function renderDashboard(){
   document.getElementById("saveBtn").onclick=function(){
     var sb=document.getElementById("saveBtn");collectLinks();sb.disabled=true;sb.textContent="Saving…";
     saveContent().then(function(){renderAll();toast("Saved ✓");})
-      .catch(function(){toast("Saved on this device, but the server didn't accept it. Check your connection.");})
+      .catch(function(err){
+        var mb=err&&err.size?err.size/1048576:0;
+        var msg="Saved on this device only — the server rejected it, so nobody else will see this change yet.";
+        msg+=(err&&err.status===413)||mb>4
+          ? " Your uploaded images add up to about "+mb.toFixed(1)+" MB, which is likely too big. Remove one, or re-upload a smaller version."
+          : " Check your connection and press Save changes again.";
+        toast(msg,9000);
+      })
       .then(function(){sb.disabled=false;sb.textContent="Save changes";});
   };
   document.getElementById("exportBtn").onclick=exportContent;
@@ -1214,8 +1221,25 @@ function bindUploader(inputId,handler){
 // Shrink an uploaded image before storing it, so the saved site stays small.
 // Scales the longest side down to maxPx and re-encodes as JPEG. Falls back to
 // the original data URL if anything goes wrong.
+// Not every "image" file a browser lets you pick is one it can actually display.
+// iPhone HEIC photos and PDFs are the two that catch people out — they upload
+// without complaint and then render as a broken-image icon.
+function unsupportedImageReason(file){
+  var n=(file&&file.name||"").toLowerCase(), t=(file&&file.type||"").toLowerCase();
+  if(/heic|heif/.test(t)||/\.(heic|heif)$/.test(n))
+    return "That's an iPhone HEIC photo, which web browsers can't display. On your iPhone go to Settings › Camera › Formats › Most Compatible, or open the image and export it as JPEG, then upload again.";
+  if(t==="application/pdf"||/\.pdf$/.test(n))
+    return "That's a PDF. Calendars have to be an image — open the PDF and export or screenshot it as a JPG or PNG, then upload that.";
+  if(/\.(docx?|pages|numbers|xlsx?|pptx?)$/.test(n))
+    return "That's a document, not an image. Please export it as a JPG or PNG first.";
+  if(t&&!/^image\//.test(t))
+    return "That file isn't an image. Please choose a JPG or PNG.";
+  return "";
+}
 function shrinkImage(file,maxPx,cb){
   maxPx=maxPx||1400;
+  var why=unsupportedImageReason(file);
+  if(why){toast(why,7000);return;}
   var r=new FileReader();
   r.onload=function(){
     var dataUrl=r.result;
@@ -1232,10 +1256,12 @@ function shrinkImage(file,maxPx,cb){
           ctx.fillStyle="#fff";ctx.fillRect(0,0,nw,nh);
           ctx.drawImage(img,0,0,nw,nh);
           var out=c.toDataURL("image/jpeg",0.82);
-          cb(out&&out.length<dataUrl.length?out:dataUrl);
+          cb(out&&out.length>32&&(scale<1||out.length<dataUrl.length)?out:dataUrl);
         }catch(e){cb(dataUrl);}
       };
-      img.onerror=function(){cb(dataUrl);};
+      // The browser could not decode this file. Storing it anyway is what used
+      // to produce a broken-image "?" on the site, so refuse it and say why.
+      img.onerror=function(){toast("That image couldn't be opened. Try opening it and re-saving as a JPG or PNG, then upload again.",7000);};
       img.src=dataUrl;
     }catch(e){cb(dataUrl);}
   };
@@ -1243,8 +1269,11 @@ function shrinkImage(file,maxPx,cb){
   r.readAsDataURL(file);
 }
 function handleUploads(files,listKey,rebuild,label){
-  var arr=[].slice.call(files).filter(function(f){return /^image\//.test(f.type);});var n=arr.length;
-  if(!n){toast("Please choose image files");return;}
+  var all=[].slice.call(files); if(!all.length)return;
+  var bad=""; var arr=all.filter(function(f){var why=unsupportedImageReason(f); if(why){bad=bad||why;return false;} return true;});
+  var n=arr.length;
+  if(!n){toast(bad||"Please choose image files",7000);return;}
+  if(bad)toast(bad,7000);
   if(!content[listKey])content[listKey]=[];
   arr.forEach(function(f){shrinkImage(f,1400,function(data){
     content[listKey].push({name:f.name.replace(/\.[^.]+$/,""),img:data});
@@ -1253,7 +1282,9 @@ function handleFlyers(files){handleUploads(files,"flyers",buildFlyerGrid,"Flyer"
 function handleNews(files){handleUploads(files,"newsletters",buildNewsGrid,"Newsletter");}
 function bindCalFile(inputId,key,prevId,which){
   var el=document.getElementById(inputId);if(!el)return;
-  el.onchange=function(e){var f=e.target.files[0];if(!f||!/^image\//.test(f.type)){toast("Please choose an image");return;}
+  el.onchange=function(e){var f=e.target.files[0];if(!f){return;}
+    var why=unsupportedImageReason(f);
+    if(why){toast(why,7000);el.value="";return;}
     shrinkImage(f,1600,function(data){content[key]=data;var p=document.getElementById(prevId);if(p)p.src=data;toast("Image updated — press Save changes");});el.value="";};
 }
 function exportContent(){collectLinks();dl(new Blob([JSON.stringify(content,null,2)],{type:"application/json"}),"family-hub-settings.json");toast("Settings exported");}
