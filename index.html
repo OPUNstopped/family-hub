@@ -301,6 +301,11 @@
   .vtable td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink);}
   .vtable td a{color:var(--green-soft);}
   .vtable .rm{color:#a23a2a;cursor:pointer;background:none;border:none;font-family:inherit;font-size:.85rem;}
+  .cc-toggle{display:flex;align-items:center;gap:9px;margin:12px 0 4px;cursor:pointer;font-size:.9rem;color:var(--navy-head);font-weight:600;}
+  .cc-toggle input{width:17px;height:17px;accent-color:#5C7A49;cursor:pointer;flex:none;}
+  .cc-cell{text-align:center;font-weight:600;color:var(--navy-head);}
+  .cc-total{margin-top:12px;padding:10px 14px;background:#F3F6EE;border:1px solid #DCE5D2;border-radius:10px;font-size:.9rem;color:var(--navy-head);}
+  .field-hint{font-size:.8rem;color:var(--muted);margin-top:5px;line-height:1.4;}
   .filter-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 14px;}
   .filter-row label{font-size:.82rem;font-weight:600;color:var(--navy-head);letter-spacing:.03em;text-transform:uppercase;}
   .filter-row select{font-family:inherit;font-size:.92rem;color:var(--navy-head);background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px 12px;min-width:230px;max-width:100%;cursor:pointer;}
@@ -521,6 +526,7 @@
         <div><label>Email <span class="req">*</span></label><input class="input" id="rsvpEmail" type="email" autocomplete="email" placeholder="you@example.com"></div>
         <div><label>Which event? <span class="req">*</span></label><select class="input" id="rsvpEvent"></select></div>
         <div><label>Number attending</label><input class="input" id="rsvpGuests" type="number" min="1" value="1"></div>
+        <div id="rsvpChildcareRow" style="display:none"><label>How many children need childcare?</label><input class="input" id="rsvpChildren" type="number" min="0" value="0" placeholder="0"><div class="field-hint" id="rsvpChildcareHint">Childcare is provided for this event. Enter 0 if you don't need it.</div></div>
         <div><label>Contact number</label><input class="input" id="rsvpPhone" type="tel" autocomplete="tel" placeholder="(555) 555-5555"></div>
         <div><label>Notes (optional)</label><input class="input" id="rsvpMsg" placeholder="Allergies, questions, anything else"></div>
         <div class="vol-actions"><span class="vol-err" id="rsvpErr"></span><button class="btn-submit" id="rsvpSubmit" type="button">Submit RSVP</button></div>
@@ -704,7 +710,20 @@ var DEFAULTS={
 var content=loadContentLocal();
 function loadContentLocal(){var c=JSON.parse(JSON.stringify(DEFAULTS));var s=LS.get("mmfh_content");
   if(s){try{var o=JSON.parse(s);for(var k in o)c[k]=o[k];}catch(e){}}return c;}
-function applyContent(o){if(!o)return;for(var k in o)content[k]=o[k];LS.set("mmfh_content",JSON.stringify(content));}
+// Childcare is offered ONLY at the Jesse McCarthy guest-speaker night, so that
+// single event is the only one switched on automatically. Every other event
+// stays off unless an admin deliberately ticks its checkbox. The name is
+// stripped to letters first so spacing and punctuation ("Guest Speaker: Jesse
+// McCarthy", "Jesse Mc Carthy") still match, but nothing else can.
+function isChildcareEvent(name){
+  return String(name||"").toLowerCase().replace(/[^a-z]/g,"").indexOf("jessemccarthy")!==-1;
+}
+function normalizeEvents(){
+  (content.events||[]).forEach(function(e){
+    if(e && e.childcare===undefined && isChildcareEvent(e.name)) e.childcare=true;
+  });
+}
+function applyContent(o){if(!o)return;for(var k in o)content[k]=o[k];normalizeEvents();LS.set("mmfh_content",JSON.stringify(content));}
 // Pull the authoritative content from the server on load.
 function syncContentFromServer(cb){
   fetch("/api/content",{headers:{"Accept":"application/json"}})
@@ -797,9 +816,9 @@ function renderAll(){
   }).join("");
   [].forEach.call(eg.querySelectorAll(".ev-card.clickable"),function(el){el.addEventListener("click",function(){var e=content.events[+el.getAttribute("data-i")];if(!e)return;var src=flyerSrcFor(e);if(src)openImg(src,flyerTitleFor(e));});});
 
-  var evOpts=content.events.map(function(e){var lbl=e.name+(e.date?" — "+e.date:"");return '<option value="'+esc(lbl)+'">'+esc(lbl)+'</option>';}).join("");
+  var evOpts=content.events.map(function(e){var lbl=e.name+(e.date?" — "+e.date:"");return '<option value="'+esc(lbl)+'"'+(e.childcare?' data-childcare="1"':'')+'>'+esc(lbl)+'</option>';}).join("");
   var vs=document.getElementById("volEvent"); if(vs)vs.innerHTML='<option value="">Wherever I\'m needed most</option>'+evOpts;
-  var re2=document.getElementById("rsvpEvent"); if(re2)re2.innerHTML='<option value="">Select an event…</option>'+evOpts;
+  var re2=document.getElementById("rsvpEvent"); if(re2){re2.innerHTML='<option value="">Select an event…</option>'+evOpts;syncChildcareRow();}
 
   var fsec=document.getElementById("flyers"),fg=document.getElementById("flyersGrid");
   if(content.flyers&&content.flyers.length){fsec.style.display="";
@@ -892,8 +911,24 @@ function postSubmission(entry,cb){
     })
     .catch(function(){cb(false,"Could not reach the server. Please check your connection.");});
 }
+// The childcare question belongs only to events flagged for it in the admin
+// area, so it appears and disappears as the family changes their event choice.
+function selectedEventWantsChildcare(){
+  var sel=document.getElementById("rsvpEvent"); if(!sel)return false;
+  var opt=sel.options[sel.selectedIndex];
+  return !!(opt&&opt.getAttribute("data-childcare"));
+}
+function syncChildcareRow(){
+  var row=document.getElementById("rsvpChildcareRow"),kids=document.getElementById("rsvpChildren");
+  if(!row)return;
+  var on=selectedEventWantsChildcare();
+  row.style.display=on?"":"none";
+  if(!on&&kids)kids.value="0"; // never send a stale count for an event that doesn't ask
+}
 function bindRsvp(){
   var btn=document.getElementById("rsvpSubmit"); if(!btn)return;
+  var evSel=document.getElementById("rsvpEvent");
+  if(evSel)evSel.onchange=syncChildcareRow;
   btn.onclick=function(){
     var name=val("rsvpName"),email=val("rsvpEmail"),event=document.getElementById("rsvpEvent").value,
         guests=document.getElementById("rsvpGuests").value,phone=val("rsvpPhone"),msg=val("rsvpMsg"),
@@ -903,6 +938,11 @@ function bindRsvp(){
     if(!event){err.textContent="Please choose an event.";return;}
     err.textContent="";
     var entry={type:"rsvp",name:name,email:email,phone:phone,event:event,guests:guests||"1",message:msg};
+    // Only attach a childcare count for events that actually ask for one.
+    if(selectedEventWantsChildcare()){
+      var kids=document.getElementById("rsvpChildren").value;
+      entry.children=(kids===""||isNaN(+kids)||+kids<0)?"0":String(Math.floor(+kids));
+    }
     var sbtn=document.getElementById("rsvpSubmit");sbtn.disabled=true;
     postSubmission(entry,function(ok,errMsg){
       sbtn.disabled=false;
@@ -912,6 +952,7 @@ function bindRsvp(){
       document.getElementById("rsvpSuccess").classList.add("show");
       ["rsvpName","rsvpEmail","rsvpPhone","rsvpMsg"].forEach(function(id){document.getElementById(id).value="";});
       document.getElementById("rsvpGuests").value="1";
+      document.getElementById("rsvpChildren").value="0";
     });
   };
   document.getElementById("rsvpAnother").onclick=function(){
@@ -1221,10 +1262,19 @@ function buildRsvpTable(){
   syncClearButton("rsvpClear",rsvpFilter,v.length,"RSVP");
   if(!all.length){w.innerHTML='<div class="vempty">No RSVPs yet. They will appear here as families RSVP through the site.</div>';return;}
   if(!v.length){w.innerHTML='<div class="vempty">No RSVPs for “'+esc(rsvpFilter)+'” yet.</div>';return;}
-  w.innerHTML='<table class="vtable"><thead><tr><th>Name</th><th>Email</th><th>Event</th><th>Guests</th><th>Phone</th><th>Notes</th><th>When</th><th></th></tr></thead><tbody>'+
+  // The Childcare column only earns its place when the rows on screen actually
+  // carry childcare numbers, so every other event's table stays uncluttered.
+  var showCC=v.some(function(e){return e.children!=null&&e.children!=="";});
+  var ccTotal=v.reduce(function(n,e){var k=parseInt(e.children,10);return n+(isNaN(k)?0:k);},0);
+  w.innerHTML='<table class="vtable"><thead><tr><th>Name</th><th>Email</th><th>Event</th><th>Guests</th>'+
+    (showCC?'<th>Childcare</th>':'')+'<th>Phone</th><th>Notes</th><th>When</th><th></th></tr></thead><tbody>'+
     v.map(function(e){var d=new Date(e.ts);var ds=isNaN(d)?"":d.toLocaleDateString()+" "+d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
-      return '<tr><td>'+esc(e.name)+'</td><td><a href="mailto:'+esc(e.email)+'">'+esc(e.email)+'</a></td><td>'+esc(e.event)+'</td><td>'+esc(e.guests||"")+'</td><td>'+esc(e.phone||"")+'</td><td>'+esc(e.message||"")+'</td><td>'+esc(ds)+'</td><td><button class="rm" data-id="'+esc(e.id)+'">Remove</button></td></tr>';}).join("")+
-    '</tbody></table>';
+      var cc=(e.children==null||e.children==="")?"—":esc(e.children);
+      return '<tr><td>'+esc(e.name)+'</td><td><a href="mailto:'+esc(e.email)+'">'+esc(e.email)+'</a></td><td>'+esc(e.event)+'</td><td>'+esc(e.guests||"")+'</td>'+
+        (showCC?'<td class="cc-cell">'+cc+'</td>':'')+
+        '<td>'+esc(e.phone||"")+'</td><td>'+esc(e.message||"")+'</td><td>'+esc(ds)+'</td><td><button class="rm" data-id="'+esc(e.id)+'">Remove</button></td></tr>';}).join("")+
+    '</tbody></table>'+
+    (showCC?'<div class="cc-total">Childcare needed: <strong>'+ccTotal+'</strong> child'+(ccTotal===1?"":"ren")+' across '+v.length+' RSVP'+(v.length===1?"":"s")+'</div>':'');
   [].forEach.call(w.querySelectorAll(".rm"),function(b){b.onclick=function(){
     var id=b.getAttribute("data-id");b.disabled=true;
     fetch("/api/submissions?id="+encodeURIComponent(id),{method:"DELETE"})
@@ -1235,9 +1285,14 @@ function buildRsvpTable(){
 function exportRsvpCsv(){
   var v=filterByEvent(loadRsvp(),rsvpFilter);
   if(!v.length){toast(rsvpFilter?("No RSVPs for “"+rsvpFilter+"” to export"):"No RSVPs to export");return;}
-  var head=["Name","Email","Event","Guests","Phone","Notes","SubmittedAt"];
+  var showCC=v.some(function(e){return e.children!=null&&e.children!=="";});
+  var head=showCC?["Name","Email","Event","Guests","ChildrenNeedingChildcare","Phone","Notes","SubmittedAt"]
+                 :["Name","Email","Event","Guests","Phone","Notes","SubmittedAt"];
   function q(s){s=String(s==null?"":s).replace(/"/g,'""');return '"'+s+'"';}
-  var rows=v.map(function(e){return [e.name,e.email,e.event,e.guests,e.phone,e.message,e.ts].map(q).join(",");});
+  var rows=v.map(function(e){
+    var cells=showCC?[e.name,e.email,e.event,e.guests,(e.children==null?"":e.children),e.phone,e.message,e.ts]
+                    :[e.name,e.email,e.event,e.guests,e.phone,e.message,e.ts];
+    return cells.map(q).join(",");});
   var name=rsvpFilter?("rsvps-"+slug(rsvpFilter)+".csv"):"event-rsvps-all-events.csv";
   dl(new Blob([head.map(q).join(",")+"\n"+rows.join("\n")],{type:"text/csv"}),name);
   toast("Exported "+v.length+" RSVP"+(v.length===1?"":"s")+(rsvpFilter?" for "+rsvpFilter:""),4000);
@@ -1283,6 +1338,9 @@ function buildEventsEdit(){
         (src?'<button class="btn danger small evflyerrm" data-i="'+i+'">Remove flyer</button>':'')+'</div>'+
         '<input type="file" id="evflyer'+i+'" class="evflyerin" data-i="'+i+'" accept="image/*" style="display:none">'+
         '<div class="fe-hint">Upload a flyer image for this event. Families tap the event card to view it.</div>'+
+        '<label class="cc-toggle"><input type="checkbox" class="evcc" data-i="'+i+'"'+(e.childcare?' checked':'')+'>'+
+        '<span>Ask about childcare on the RSVP form</span></label>'+
+        '<div class="fe-hint">Only tick this for events offering childcare. Families RSVPing for it get an extra “How many children need childcare?” box, and those numbers show as their own column in the RSVP table.</div>'+
       '</div>'+
     '</div></div>';}).join("");
   [].forEach.call(w.querySelectorAll(".evdate"),function(el){el.oninput=function(){content.events[+el.dataset.i].date=el.value;};});
@@ -1290,6 +1348,11 @@ function buildEventsEdit(){
   [].forEach.call(w.querySelectorAll(".evnote"),function(el){el.oninput=function(){content.events[+el.dataset.i].note=el.value;};});
   [].forEach.call(w.querySelectorAll(".evicon"),function(el){el.onchange=function(){content.events[+el.dataset.i].icon=el.value;};});
   [].forEach.call(w.querySelectorAll(".evrm"),function(el){el.onclick=function(){content.events.splice(+el.dataset.i,1);buildEventsEdit();};});
+  [].forEach.call(w.querySelectorAll(".evcc"),function(el){el.onchange=function(){
+    var e=content.events[+el.dataset.i];
+    if(el.checked)e.childcare=true; else e.childcare=false;
+    toast(el.checked?"Childcare question turned on — press Save changes":"Childcare question turned off — press Save changes",4000);
+  };});
   [].forEach.call(w.querySelectorAll(".evflyerin"),function(el){el.onchange=function(ev){var f=ev.target.files[0];if(!f||!/^image\//.test(f.type)){toast("Please choose an image");return;}
     var idx=+el.dataset.i;shrinkImage(f,1400,function(data){var e=content.events[idx];e.flyerImg=data;delete e.noFlyer;buildEventsEdit();toast("Flyer added — press Save changes");});el.value="";};});
   [].forEach.call(w.querySelectorAll(".evflyerrm"),function(el){el.onclick=function(){var e=content.events[+el.dataset.i];delete e.flyerImg;e.noFlyer=true;buildEventsEdit();toast("Flyer removed — press Save changes");};});
@@ -1396,6 +1459,7 @@ function dl(blob,name){var u=URL.createObjectURL(blob),a=document.createElement(
 /* ---------- init ---------- */
 renderAll();bindVolunteer();bindRsvp();
 // Load the authoritative site content from the server, then re-render and route.
+normalizeEvents();
 syncContentFromServer(function(){renderAll();route();});
 </script>
 </body>
