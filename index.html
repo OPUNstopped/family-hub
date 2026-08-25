@@ -301,6 +301,17 @@
   .vtable td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink);}
   .vtable td a{color:var(--green-soft);}
   .vtable .rm{color:#a23a2a;cursor:pointer;background:none;border:none;font-family:inherit;font-size:.85rem;}
+  .cc-ages{display:flex;gap:10px;flex-wrap:wrap;}
+  .cc-age{flex:1 1 90px;min-width:86px;}
+  .cc-age-lbl{display:block;font-size:.78rem;font-weight:600;color:var(--navy-head);margin-bottom:4px;letter-spacing:.02em;}
+  .cc-age .input{width:100%;text-align:center;}
+  .cc-h{white-space:nowrap;}
+  .cc-dash{color:#b9b2a2;}
+  .cc-tot{background:#F3F6EE;}
+  .cc-pill{display:inline-block;background:#fff;border:1px solid #DCE5D2;border-radius:999px;padding:3px 11px;margin:0 6px 0 0;font-size:.86rem;font-weight:600;}
+  .cc-pill-unknown{background:#FBF3E4;border-color:#E6D5B4;color:#7A6132;}
+  .cc-pill-all{background:#5C7A49;border-color:#5C7A49;color:#fff;}
+  .cc-note{color:var(--muted);font-size:.84rem;}
   .cc-toggle{display:flex;align-items:center;gap:9px;margin:12px 0 4px;cursor:pointer;font-size:.9rem;color:var(--navy-head);font-weight:600;}
   .cc-toggle input{width:17px;height:17px;accent-color:#5C7A49;cursor:pointer;flex:none;}
   .cc-cell{text-align:center;font-weight:600;color:var(--navy-head);}
@@ -526,7 +537,13 @@
         <div><label>Email <span class="req">*</span></label><input class="input" id="rsvpEmail" type="email" autocomplete="email" placeholder="you@example.com"></div>
         <div><label>Which event? <span class="req">*</span></label><select class="input" id="rsvpEvent"></select></div>
         <div><label>Number attending</label><input class="input" id="rsvpGuests" type="number" min="1" value="1"></div>
-        <div id="rsvpChildcareRow" style="display:none"><label>How many children need childcare?</label><input class="input" id="rsvpChildren" type="number" min="0" value="0" placeholder="0"><div class="field-hint" id="rsvpChildcareHint">Childcare is provided for this event. Enter 0 if you don't need it.</div></div>
+        <div id="rsvpChildcareRow" style="display:none"><label>How many children need childcare?</label>
+          <div class="cc-ages">
+            <div class="cc-age"><span class="cc-age-lbl">Toddler</span><input class="input" id="rsvpCcToddler" type="number" min="0" value="0" inputmode="numeric"></div>
+            <div class="cc-age"><span class="cc-age-lbl">Primary</span><input class="input" id="rsvpCcPrimary" type="number" min="0" value="0" inputmode="numeric"></div>
+            <div class="cc-age"><span class="cc-age-lbl">Elementary</span><input class="input" id="rsvpCcElementary" type="number" min="0" value="0" inputmode="numeric"></div>
+          </div>
+          <div class="field-hint" id="rsvpChildcareHint">Childcare is provided for this event. Enter how many children in each age group, so we can arrange the right staff. Leave all at 0 if you don't need it.</div></div>
         <div><label>Contact number</label><input class="input" id="rsvpPhone" type="tel" autocomplete="tel" placeholder="(555) 555-5555"></div>
         <div><label>Notes (optional)</label><input class="input" id="rsvpMsg" placeholder="Allergies, questions, anything else"></div>
         <div class="vol-actions"><span class="vol-err" id="rsvpErr"></span><button class="btn-submit" id="rsvpSubmit" type="button">Submit RSVP</button></div>
@@ -918,12 +935,16 @@ function selectedEventWantsChildcare(){
   var opt=sel.options[sel.selectedIndex];
   return !!(opt&&opt.getAttribute("data-childcare"));
 }
+// The three age-group boxes are handled as a set.
+var CC_FIELDS=[["rsvpCcToddler","toddler"],["rsvpCcPrimary","primary"],["rsvpCcElementary","elementary"]];
+function ccReset(){CC_FIELDS.forEach(function(f){var el=document.getElementById(f[0]);if(el)el.value="0";});}
+function ccVal(id){var el=document.getElementById(id);if(!el)return 0;var n=parseInt(el.value,10);return(isNaN(n)||n<0)?0:n;}
 function syncChildcareRow(){
-  var row=document.getElementById("rsvpChildcareRow"),kids=document.getElementById("rsvpChildren");
+  var row=document.getElementById("rsvpChildcareRow");
   if(!row)return;
   var on=selectedEventWantsChildcare();
   row.style.display=on?"":"none";
-  if(!on&&kids)kids.value="0"; // never send a stale count for an event that doesn't ask
+  if(!on)ccReset(); // never send stale counts for an event that doesn't ask
 }
 function bindRsvp(){
   var btn=document.getElementById("rsvpSubmit"); if(!btn)return;
@@ -938,10 +959,11 @@ function bindRsvp(){
     if(!event){err.textContent="Please choose an event.";return;}
     err.textContent="";
     var entry={type:"rsvp",name:name,email:email,phone:phone,event:event,guests:guests||"1",message:msg};
-    // Only attach a childcare count for events that actually ask for one.
+    // Only attach childcare counts for events that actually ask for them.
     if(selectedEventWantsChildcare()){
-      var kids=document.getElementById("rsvpChildren").value;
-      entry.children=(kids===""||isNaN(+kids)||+kids<0)?"0":String(Math.floor(+kids));
+      var t=ccVal("rsvpCcToddler"),p=ccVal("rsvpCcPrimary"),el2=ccVal("rsvpCcElementary");
+      entry.ccToddler=String(t); entry.ccPrimary=String(p); entry.ccElementary=String(el2);
+      entry.children=String(t+p+el2); // running total, kept so older RSVPs still line up
     }
     var sbtn=document.getElementById("rsvpSubmit");sbtn.disabled=true;
     postSubmission(entry,function(ok,errMsg){
@@ -952,7 +974,7 @@ function bindRsvp(){
       document.getElementById("rsvpSuccess").classList.add("show");
       ["rsvpName","rsvpEmail","rsvpPhone","rsvpMsg"].forEach(function(id){document.getElementById(id).value="";});
       document.getElementById("rsvpGuests").value="1";
-      document.getElementById("rsvpChildren").value="0";
+      ccReset();
     });
   };
   document.getElementById("rsvpAnother").onclick=function(){
@@ -1262,19 +1284,32 @@ function buildRsvpTable(){
   syncClearButton("rsvpClear",rsvpFilter,v.length,"RSVP");
   if(!all.length){w.innerHTML='<div class="vempty">No RSVPs yet. They will appear here as families RSVP through the site.</div>';return;}
   if(!v.length){w.innerHTML='<div class="vempty">No RSVPs for “'+esc(rsvpFilter)+'” yet.</div>';return;}
-  // The Childcare column only earns its place when the rows on screen actually
-  // carry childcare numbers, so every other event's table stays uncluttered.
+  // The childcare columns only earn their place when the rows on screen carry
+  // childcare data, so every other event's table stays uncluttered.
   var showCC=v.some(function(e){return e.children!=null&&e.children!=="";});
-  var ccTotal=v.reduce(function(n,e){var k=parseInt(e.children,10);return n+(isNaN(k)?0:k);},0);
+  function ccNum(x){var n=parseInt(x,10);return isNaN(n)?0:n;}
+  function ccCell(x){return(x==null||x==="")?'<span class="cc-dash">—</span>':esc(String(x));}
+  var tT=0,tP=0,tE=0,tAll=0;
+  v.forEach(function(e){tT+=ccNum(e.ccToddler);tP+=ccNum(e.ccPrimary);tE+=ccNum(e.ccElementary);tAll+=ccNum(e.children);});
+  // RSVPs taken before age groups existed have a total but no breakdown; show
+  // that remainder separately so the three groups always add up to the total.
+  var tUnknown=Math.max(0,tAll-(tT+tP+tE));
   w.innerHTML='<table class="vtable"><thead><tr><th>Name</th><th>Email</th><th>Event</th><th>Guests</th>'+
-    (showCC?'<th>Childcare</th>':'')+'<th>Phone</th><th>Notes</th><th>When</th><th></th></tr></thead><tbody>'+
+    (showCC?'<th class="cc-h">Toddler</th><th class="cc-h">Primary</th><th class="cc-h">Elementary</th><th class="cc-h">Total kids</th>':'')+
+    '<th>Phone</th><th>Notes</th><th>When</th><th></th></tr></thead><tbody>'+
     v.map(function(e){var d=new Date(e.ts);var ds=isNaN(d)?"":d.toLocaleDateString()+" "+d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
-      var cc=(e.children==null||e.children==="")?"—":esc(e.children);
       return '<tr><td>'+esc(e.name)+'</td><td><a href="mailto:'+esc(e.email)+'">'+esc(e.email)+'</a></td><td>'+esc(e.event)+'</td><td>'+esc(e.guests||"")+'</td>'+
-        (showCC?'<td class="cc-cell">'+cc+'</td>':'')+
+        (showCC?'<td class="cc-cell">'+ccCell(e.ccToddler)+'</td><td class="cc-cell">'+ccCell(e.ccPrimary)+'</td><td class="cc-cell">'+ccCell(e.ccElementary)+'</td><td class="cc-cell cc-tot">'+ccCell(e.children)+'</td>':'')+
         '<td>'+esc(e.phone||"")+'</td><td>'+esc(e.message||"")+'</td><td>'+esc(ds)+'</td><td><button class="rm" data-id="'+esc(e.id)+'">Remove</button></td></tr>';}).join("")+
     '</tbody></table>'+
-    (showCC?'<div class="cc-total">Childcare needed: <strong>'+ccTotal+'</strong> child'+(ccTotal===1?"":"ren")+' across '+v.length+' RSVP'+(v.length===1?"":"s")+'</div>':'');
+    (showCC?'<div class="cc-total"><strong>Childcare needed:</strong> '+
+      '<span class="cc-pill">Toddler '+tT+'</span> '+
+      '<span class="cc-pill">Primary '+tP+'</span> '+
+      '<span class="cc-pill">Elementary '+tE+'</span> '+
+      (tUnknown?'<span class="cc-pill cc-pill-unknown">Age not given '+tUnknown+'</span> ':'')+
+      '<span class="cc-pill cc-pill-all">'+tAll+' child'+(tAll===1?"":"ren")+' total</span> '+
+      '<span class="cc-note">across '+v.length+' RSVP'+(v.length===1?"":"s")+
+      (tUnknown?' · “Age not given” are RSVPs submitted before age groups were added':'')+'</span></div>':'');
   [].forEach.call(w.querySelectorAll(".rm"),function(b){b.onclick=function(){
     var id=b.getAttribute("data-id");b.disabled=true;
     fetch("/api/submissions?id="+encodeURIComponent(id),{method:"DELETE"})
@@ -1286,11 +1321,13 @@ function exportRsvpCsv(){
   var v=filterByEvent(loadRsvp(),rsvpFilter);
   if(!v.length){toast(rsvpFilter?("No RSVPs for “"+rsvpFilter+"” to export"):"No RSVPs to export");return;}
   var showCC=v.some(function(e){return e.children!=null&&e.children!=="";});
-  var head=showCC?["Name","Email","Event","Guests","ChildrenNeedingChildcare","Phone","Notes","SubmittedAt"]
+  var head=showCC?["Name","Email","Event","Guests","Toddler","Primary","Elementary","TotalChildren","Phone","Notes","SubmittedAt"]
                  :["Name","Email","Event","Guests","Phone","Notes","SubmittedAt"];
   function q(s){s=String(s==null?"":s).replace(/"/g,'""');return '"'+s+'"';}
   var rows=v.map(function(e){
-    var cells=showCC?[e.name,e.email,e.event,e.guests,(e.children==null?"":e.children),e.phone,e.message,e.ts]
+    var cells=showCC?[e.name,e.email,e.event,e.guests,
+                      (e.ccToddler==null?"":e.ccToddler),(e.ccPrimary==null?"":e.ccPrimary),(e.ccElementary==null?"":e.ccElementary),
+                      (e.children==null?"":e.children),e.phone,e.message,e.ts]
                     :[e.name,e.email,e.event,e.guests,e.phone,e.message,e.ts];
     return cells.map(q).join(",");});
   var name=rsvpFilter?("rsvps-"+slug(rsvpFilter)+".csv"):"event-rsvps-all-events.csv";
