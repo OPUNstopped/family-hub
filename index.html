@@ -301,6 +301,12 @@
   .vtable td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink);}
   .vtable td a{color:var(--green-soft);}
   .vtable .rm{color:#a23a2a;cursor:pointer;background:none;border:none;font-family:inherit;font-size:.85rem;}
+  .filter-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 14px;}
+  .filter-row label{font-size:.82rem;font-weight:600;color:var(--navy-head);letter-spacing:.03em;text-transform:uppercase;}
+  .filter-row select{font-family:inherit;font-size:.92rem;color:var(--navy-head);background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px 12px;min-width:230px;max-width:100%;cursor:pointer;}
+  .filter-row select:focus{outline:2px solid var(--green-soft);outline-offset:-1px;}
+  .filter-row select:disabled{opacity:.55;cursor:default;}
+  .filter-count{font-size:.84rem;color:var(--muted);}
   .vempty{color:var(--muted);padding:16px 4px;font-style:italic;}
   .cal-edit{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
   .cal-edit .box{border:1px solid var(--line);border-radius:12px;padding:14px;background:#fff;text-align:center;}
@@ -1001,14 +1007,16 @@ function renderDashboard(){
     '<div class="intro"><h1>Welcome back 👋</h1><p>Edit anything below, then press <strong>Save changes</strong> at the bottom.</p></div>'+
 
     '<div class="panel"><h3>'+icon("heart")+'Volunteer sign-ups ('+v.length+')</h3>'+
-      '<p class="hint">People who submitted the volunteer form on this device. Export to keep a copy or share with the team.</p>'+
+      '<p class="hint">People who submitted the volunteer form. Pick an event to see just those sign-ups — Export CSV then saves only what you are looking at.</p>'+
+      '<div class="filter-row"><label for="volFilter">Show event</label><select id="volFilter"></select><span class="filter-count" id="volCount"></span></div>'+
       '<div style="overflow-x:auto" id="volTableWrap"></div>'+
       '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">'+
         '<button class="btn primary small" id="volCsv">Export CSV</button>'+
         '<button class="btn danger small" id="volClear">Clear all</button></div></div>'+
 
     '<div class="panel"><h3>'+icon("calendar")+'Event RSVPs ('+r.length+')</h3>'+
-      '<p class="hint">People who RSVP\'d through the site on this device. Export to keep a copy or share with the team.</p>'+
+      '<p class="hint">People who RSVP\'d through the site. Pick an event to see just that event\'s RSVPs — Export CSV then saves only what you are looking at.</p>'+
+      '<div class="filter-row"><label for="rsvpFilter">Show event</label><select id="rsvpFilter"></select><span class="filter-count" id="rsvpCount"></span></div>'+
       '<div style="overflow-x:auto" id="rsvpTableWrap"></div>'+
       '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">'+
         '<button class="btn primary small" id="rsvpCsv">Export CSV</button>'+
@@ -1084,15 +1092,15 @@ function renderDashboard(){
   document.getElementById("exportBtn").onclick=exportContent;
   document.getElementById("addEvent").onclick=function(){content.events.push({date:"",name:"",note:"",icon:"star"});buildEventsEdit();};
   document.getElementById("volCsv").onclick=exportVolCsv;
-  document.getElementById("volClear").onclick=function(){if(confirm("Delete ALL volunteer sign-ups for everyone? This cannot be undone.")){
-    fetch("/api/submissions?clear=vol",{method:"DELETE"}).then(function(r){if(!r.ok)throw 0;_volCache=[];buildVolTable();
-      var h=document.querySelectorAll(".panel h3")[0];if(h)h.innerHTML=icon("heart")+"Volunteer sign-ups (0)";toast("Cleared");})
-      .catch(function(){toast("Could not clear — try again");});}};
+  document.getElementById("volClear").onclick=function(){
+    clearSubmissions("vol",volFilter,loadVol(),
+      function(ids){_volCache=ids?_volCache.filter(function(x){return ids.indexOf(x.id)===-1;}):[];},
+      buildVolTable,"sign-up",0,"heart","Volunteer sign-ups");};
   document.getElementById("rsvpCsv").onclick=exportRsvpCsv;
-  document.getElementById("rsvpClear").onclick=function(){if(confirm("Delete ALL RSVPs for everyone? This cannot be undone.")){
-    fetch("/api/submissions?clear=rsvp",{method:"DELETE"}).then(function(r){if(!r.ok)throw 0;_rsvpCache=[];buildRsvpTable();
-      var h=document.querySelectorAll(".panel h3")[1];if(h)h.innerHTML=icon("calendar")+"Event RSVPs (0)";toast("Cleared");})
-      .catch(function(){toast("Could not clear — try again");});}};
+  document.getElementById("rsvpClear").onclick=function(){
+    clearSubmissions("rsvp",rsvpFilter,loadRsvp(),
+      function(ids){_rsvpCache=ids?_rsvpCache.filter(function(x){return ids.indexOf(x.id)===-1;}):[];},
+      buildRsvpTable,"RSVP",1,"calendar","Event RSVPs");};
   bindUploader("flyerInput",handleFlyers);
   bindUploader("newsInput",handleNews);
   bindCalFile("heroFile","heroOverride","heroPrev","hero");
@@ -1106,9 +1114,47 @@ function collectLinks(){["procareUrl","donateUrl","email","website","instagram",
   var ri=document.getElementById("f_rsvpIntro");if(ri)content.rsvpIntro=ri.value.trim();
   var pt=document.getElementById("f_procareText");if(pt)content.procareText=pt.value.trim();}
 
+// ---- event filtering for sign-ups / RSVPs ----
+// "" means show everything. Filters are kept per-table so switching one does
+// not disturb the other.
+var volFilter="", rsvpFilter="";
+function eventLabel(e){var s=(e&&e.event!=null?String(e.event):"").trim();return s||"(no event given)";}
+// Distinct event names present in the data, alphabetical, so the dropdown always
+// matches what has actually been submitted rather than a hardcoded list.
+function eventNames(list){
+  var seen={},out=[];
+  list.forEach(function(e){var k=eventLabel(e);if(!seen[k]){seen[k]=1;out.push(k);}});
+  return out.sort(function(a,b){return a.localeCompare(b);});
+}
+function filterByEvent(list,sel){ return sel?list.filter(function(e){return eventLabel(e)===sel;}):list.slice(); }
+// Rebuilds the dropdown, preserving the current choice. If the chosen event no
+// longer has any entries (last one removed), it falls back to showing all.
+function buildEventFilter(selectId,list,current,onChange){
+  var sel=document.getElementById(selectId); if(!sel)return current;
+  var names=eventNames(list);
+  if(current&&names.indexOf(current)===-1)current="";
+  sel.innerHTML='<option value="">All events ('+list.length+')</option>'+
+    names.map(function(n){
+      var c=list.filter(function(e){return eventLabel(e)===n;}).length;
+      return '<option value="'+esc(n)+'"'+(n===current?' selected':'')+'>'+esc(n)+' ('+c+')</option>';
+    }).join("");
+  sel.disabled=!list.length;
+  sel.onchange=function(){onChange(sel.value);};
+  return current;
+}
+function filterSummary(countId,shown,total,sel,noun){
+  var el=document.getElementById(countId); if(!el)return;
+  el.textContent=sel?("Showing "+shown+" of "+total+" "+noun):(total+" "+noun+" total");
+}
+
 function buildVolTable(){
-  var v=loadVol().slice(),w=document.getElementById("volTableWrap");
-  if(!v.length){w.innerHTML='<div class="vempty">No sign-ups yet. They will appear here as families submit the volunteer form.</div>';return;}
+  var all=loadVol().slice(),w=document.getElementById("volTableWrap");
+  volFilter=buildEventFilter("volFilter",all,volFilter,function(val){volFilter=val;buildVolTable();});
+  var v=filterByEvent(all,volFilter);
+  filterSummary("volCount",v.length,all.length,volFilter,"sign-ups");
+  syncClearButton("volClear",volFilter,v.length,"sign-up");
+  if(!all.length){w.innerHTML='<div class="vempty">No sign-ups yet. They will appear here as families submit the volunteer form.</div>';return;}
+  if(!v.length){w.innerHTML='<div class="vempty">No sign-ups for “'+esc(volFilter)+'” yet.</div>';return;}
   w.innerHTML='<table class="vtable"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Event</th><th>Message</th><th>When</th><th></th></tr></thead><tbody>'+
     v.map(function(e){var d=new Date(e.ts);var ds=isNaN(d)?"":d.toLocaleDateString()+" "+d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
       return '<tr><td>'+esc(e.name)+'</td><td><a href="mailto:'+esc(e.email)+'">'+esc(e.email)+'</a></td><td>'+esc(e.phone)+'</td><td>'+esc(e.event)+'</td><td>'+esc(e.message||"")+'</td><td>'+esc(ds)+'</td><td><button class="rm" data-id="'+esc(e.id)+'">Remove</button></td></tr>';}).join("")+
@@ -1120,16 +1166,61 @@ function buildVolTable(){
       .catch(function(){b.disabled=false;toast("Could not remove — try again");});
   };});
 }
+// With a filter active, "Clear all" would still wipe every event's entries —
+// a nasty surprise. The button relabels itself to match what is on screen.
+function syncClearButton(btnId,sel,shown,noun){
+  var b=document.getElementById(btnId); if(!b)return;
+  b.textContent=sel?("Clear these "+shown+" "+noun+(shown===1?"":"s")):"Clear all";
+  b.disabled=sel&&!shown;
+}
+function clearSubmissions(kind,sel,list,cache,rebuild,noun,headIdx,iconName,title){
+  var rows=filterByEvent(list,sel);
+  if(sel){
+    if(!rows.length){toast("Nothing to clear");return;}
+    if(!confirm("Delete "+rows.length+" "+noun+(rows.length===1?"":"s")+" for “"+sel+"”?\n\nOther events are not affected. This cannot be undone."))return;
+    var ids=rows.map(function(e){return e.id;});
+    Promise.all(ids.map(function(id){
+      return fetch("/api/submissions?id="+encodeURIComponent(id),{method:"DELETE"}).then(function(r){return r.ok?id:null;});
+    })).then(function(done){
+      var ok=done.filter(Boolean);
+      cache(ok);
+      rebuild();
+      updatePanelHeading(headIdx,iconName,title);
+      if(ok.length===ids.length)toast("Cleared "+ok.length+" "+noun+(ok.length===1?"":"s")+" for "+sel,4000);
+      else toast("Removed "+ok.length+" of "+ids.length+" — some could not be deleted. Try again.",6000);
+    }).catch(function(){toast("Could not clear — check your connection and try again",5000);});
+    return;
+  }
+  if(!confirm("Delete ALL "+noun+"s for every event? This cannot be undone."))return;
+  fetch("/api/submissions?clear="+kind,{method:"DELETE"}).then(function(r){if(!r.ok)throw 0;
+    cache(null);rebuild();updatePanelHeading(headIdx,iconName,title);toast("Cleared");})
+    .catch(function(){toast("Could not clear — try again");});
+}
+function updatePanelHeading(idx,iconName,title){
+  var h=document.querySelectorAll(".panel h3")[idx];
+  if(h)h.innerHTML=icon(iconName)+title+" ("+(idx===0?loadVol().length:loadRsvp().length)+")";
+}
+// Filenames are derived from the chosen event so exports for different events
+// do not overwrite each other in the downloads folder.
+function slug(s){return String(s||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,50)||"event";}
 function exportVolCsv(){
-  var v=loadVol();if(!v.length){toast("No sign-ups to export");return;}
+  var v=filterByEvent(loadVol(),volFilter);
+  if(!v.length){toast(volFilter?("No sign-ups for “"+volFilter+"” to export"):"No sign-ups to export");return;}
   var head=["Name","Email","Phone","Event","Message","SubmittedAt"];
   function q(s){s=String(s==null?"":s).replace(/"/g,'""');return '"'+s+'"';}
   var rows=v.map(function(e){return [e.name,e.email,e.phone,e.event,e.message,e.ts].map(q).join(",");});
-  dl(new Blob([head.map(q).join(",")+"\n"+rows.join("\n")],{type:"text/csv"}),"volunteer-signups.csv");toast("CSV exported");
+  var name=volFilter?("volunteers-"+slug(volFilter)+".csv"):"volunteer-signups-all-events.csv";
+  dl(new Blob([head.map(q).join(",")+"\n"+rows.join("\n")],{type:"text/csv"}),name);
+  toast("Exported "+v.length+" sign-up"+(v.length===1?"":"s")+(volFilter?" for "+volFilter:""),4000);
 }
 function buildRsvpTable(){
-  var v=loadRsvp().slice(),w=document.getElementById("rsvpTableWrap");
-  if(!v.length){w.innerHTML='<div class="vempty">No RSVPs yet. They will appear here as families RSVP through the site.</div>';return;}
+  var all=loadRsvp().slice(),w=document.getElementById("rsvpTableWrap");
+  rsvpFilter=buildEventFilter("rsvpFilter",all,rsvpFilter,function(val){rsvpFilter=val;buildRsvpTable();});
+  var v=filterByEvent(all,rsvpFilter);
+  filterSummary("rsvpCount",v.length,all.length,rsvpFilter,"RSVPs");
+  syncClearButton("rsvpClear",rsvpFilter,v.length,"RSVP");
+  if(!all.length){w.innerHTML='<div class="vempty">No RSVPs yet. They will appear here as families RSVP through the site.</div>';return;}
+  if(!v.length){w.innerHTML='<div class="vempty">No RSVPs for “'+esc(rsvpFilter)+'” yet.</div>';return;}
   w.innerHTML='<table class="vtable"><thead><tr><th>Name</th><th>Email</th><th>Event</th><th>Guests</th><th>Phone</th><th>Notes</th><th>When</th><th></th></tr></thead><tbody>'+
     v.map(function(e){var d=new Date(e.ts);var ds=isNaN(d)?"":d.toLocaleDateString()+" "+d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
       return '<tr><td>'+esc(e.name)+'</td><td><a href="mailto:'+esc(e.email)+'">'+esc(e.email)+'</a></td><td>'+esc(e.event)+'</td><td>'+esc(e.guests||"")+'</td><td>'+esc(e.phone||"")+'</td><td>'+esc(e.message||"")+'</td><td>'+esc(ds)+'</td><td><button class="rm" data-id="'+esc(e.id)+'">Remove</button></td></tr>';}).join("")+
@@ -1142,11 +1233,14 @@ function buildRsvpTable(){
   };});
 }
 function exportRsvpCsv(){
-  var v=loadRsvp();if(!v.length){toast("No RSVPs to export");return;}
+  var v=filterByEvent(loadRsvp(),rsvpFilter);
+  if(!v.length){toast(rsvpFilter?("No RSVPs for “"+rsvpFilter+"” to export"):"No RSVPs to export");return;}
   var head=["Name","Email","Event","Guests","Phone","Notes","SubmittedAt"];
   function q(s){s=String(s==null?"":s).replace(/"/g,'""');return '"'+s+'"';}
   var rows=v.map(function(e){return [e.name,e.email,e.event,e.guests,e.phone,e.message,e.ts].map(q).join(",");});
-  dl(new Blob([head.map(q).join(",")+"\n"+rows.join("\n")],{type:"text/csv"}),"event-rsvps.csv");toast("CSV exported");
+  var name=rsvpFilter?("rsvps-"+slug(rsvpFilter)+".csv"):"event-rsvps-all-events.csv";
+  dl(new Blob([head.map(q).join(",")+"\n"+rows.join("\n")],{type:"text/csv"}),name);
+  toast("Exported "+v.length+" RSVP"+(v.length===1?"":"s")+(rsvpFilter?" for "+rsvpFilter:""),4000);
 }
 function buildMonthEdit(){
   var w=document.getElementById("monthEdit");
