@@ -938,6 +938,25 @@ function selectedEventWantsChildcare(){
 // The three age-group boxes are handled as a set.
 var CC_FIELDS=[["rsvpCcToddler","toddler"],["rsvpCcPrimary","primary"],["rsvpCcElementary","elementary"]];
 function ccReset(){CC_FIELDS.forEach(function(f){var el=document.getElementById(f[0]);if(el)el.value="0";});}
+// ---- reading childcare counts back ----
+// Counts are read from the proper fields when the server kept them, and
+// otherwise recovered from the stamp left in the notes.
+var CC_TAG_OPEN="[childcare ", CC_TAG_CLOSE="]";
+var CC_RE=/\[childcare\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\]/i;
+function ccOf(e){
+  if(!e)return null;
+  var t=e.ccToddler,p=e.ccPrimary,l=e.ccElementary;
+  if(t!=null&&t!==""&&p!=null&&l!=null)
+    return {t:+t||0,p:+p||0,e:+l||0,total:(+t||0)+(+p||0)+(+l||0),known:true};
+  var m=CC_RE.exec(String(e.message||""));
+  if(m)return {t:+m[1],p:+m[2],e:+m[3],total:(+m[1])+(+m[2])+(+m[3]),known:true};
+  // Older RSVP: a total may exist with no age split.
+  if(e.children!=null&&e.children!=="")
+    return {t:null,p:null,e:null,total:parseInt(e.children,10)||0,known:false};
+  return null;
+}
+// Notes with the machine stamp removed, for display and export.
+function notesOf(e){return String((e&&e.message)||"").replace(CC_RE,"").replace(/\s+$/,"");}
 function ccVal(id){var el=document.getElementById(id);if(!el)return 0;var n=parseInt(el.value,10);return(isNaN(n)||n<0)?0:n;}
 function syncChildcareRow(){
   var row=document.getElementById("rsvpChildcareRow");
@@ -963,7 +982,12 @@ function bindRsvp(){
     if(selectedEventWantsChildcare()){
       var t=ccVal("rsvpCcToddler"),p=ccVal("rsvpCcPrimary"),el2=ccVal("rsvpCcElementary");
       entry.ccToddler=String(t); entry.ccPrimary=String(p); entry.ccElementary=String(el2);
-      entry.children=String(t+p+el2); // running total, kept so older RSVPs still line up
+      entry.children=String(t+p+el2); // running total
+      // The counts are ALSO stamped into the notes field. Some servers only save
+      // the fields they already know about and quietly drop new ones, which would
+      // lose the childcare numbers. Notes is always saved, so this guarantees the
+      // figures survive. The stamp is stripped back out before anything is shown.
+      entry.message=(msg?msg+" ":"")+CC_TAG_OPEN+t+","+p+","+el2+CC_TAG_CLOSE;
     }
     var sbtn=document.getElementById("rsvpSubmit");sbtn.disabled=true;
     postSubmission(entry,function(ok,errMsg){
@@ -1286,11 +1310,15 @@ function buildRsvpTable(){
   if(!v.length){w.innerHTML='<div class="vempty">No RSVPs for “'+esc(rsvpFilter)+'” yet.</div>';return;}
   // The childcare columns only earn their place when the rows on screen carry
   // childcare data, so every other event's table stays uncluttered.
-  var showCC=v.some(function(e){return e.children!=null&&e.children!=="";});
-  function ccNum(x){var n=parseInt(x,10);return isNaN(n)?0:n;}
-  function ccCell(x){return(x==null||x==="")?'<span class="cc-dash">—</span>':esc(String(x));}
+  // Show the childcare columns whenever the rows on screen either carry
+  // childcare data or belong to the event that asks for it, so the columns are
+  // there even before the first family has answered.
+  var showCC=v.some(function(e){return ccOf(e)||isChildcareEvent(e.event);});
+  function ccCell(x){return(x==null)?'<span class="cc-dash">—</span>':esc(String(x));}
   var tT=0,tP=0,tE=0,tAll=0;
-  v.forEach(function(e){tT+=ccNum(e.ccToddler);tP+=ccNum(e.ccPrimary);tE+=ccNum(e.ccElementary);tAll+=ccNum(e.children);});
+  v.forEach(function(e){var c=ccOf(e);if(!c)return;
+    if(c.known){tT+=c.t||0;tP+=c.p||0;tE+=c.e||0;}
+    tAll+=c.total||0;});
   // RSVPs taken before age groups existed have a total but no breakdown; show
   // that remainder separately so the three groups always add up to the total.
   var tUnknown=Math.max(0,tAll-(tT+tP+tE));
@@ -1298,9 +1326,10 @@ function buildRsvpTable(){
     (showCC?'<th class="cc-h">Toddler</th><th class="cc-h">Primary</th><th class="cc-h">Elementary</th><th class="cc-h">Total kids</th>':'')+
     '<th>Phone</th><th>Notes</th><th>When</th><th></th></tr></thead><tbody>'+
     v.map(function(e){var d=new Date(e.ts);var ds=isNaN(d)?"":d.toLocaleDateString()+" "+d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+      var c=ccOf(e);
       return '<tr><td>'+esc(e.name)+'</td><td><a href="mailto:'+esc(e.email)+'">'+esc(e.email)+'</a></td><td>'+esc(e.event)+'</td><td>'+esc(e.guests||"")+'</td>'+
-        (showCC?'<td class="cc-cell">'+ccCell(e.ccToddler)+'</td><td class="cc-cell">'+ccCell(e.ccPrimary)+'</td><td class="cc-cell">'+ccCell(e.ccElementary)+'</td><td class="cc-cell cc-tot">'+ccCell(e.children)+'</td>':'')+
-        '<td>'+esc(e.phone||"")+'</td><td>'+esc(e.message||"")+'</td><td>'+esc(ds)+'</td><td><button class="rm" data-id="'+esc(e.id)+'">Remove</button></td></tr>';}).join("")+
+        (showCC?'<td class="cc-cell">'+ccCell(c&&c.known?c.t:null)+'</td><td class="cc-cell">'+ccCell(c&&c.known?c.p:null)+'</td><td class="cc-cell">'+ccCell(c&&c.known?c.e:null)+'</td><td class="cc-cell cc-tot">'+ccCell(c?c.total:null)+'</td>':'')+
+        '<td>'+esc(e.phone||"")+'</td><td>'+esc(notesOf(e))+'</td><td>'+esc(ds)+'</td><td><button class="rm" data-id="'+esc(e.id)+'">Remove</button></td></tr>';}).join("")+
     '</tbody></table>'+
     (showCC?'<div class="cc-total"><strong>Childcare needed:</strong> '+
       '<span class="cc-pill">Toddler '+tT+'</span> '+
@@ -1320,15 +1349,16 @@ function buildRsvpTable(){
 function exportRsvpCsv(){
   var v=filterByEvent(loadRsvp(),rsvpFilter);
   if(!v.length){toast(rsvpFilter?("No RSVPs for “"+rsvpFilter+"” to export"):"No RSVPs to export");return;}
-  var showCC=v.some(function(e){return e.children!=null&&e.children!=="";});
+  var showCC=v.some(function(e){return ccOf(e)||isChildcareEvent(e.event);});
   var head=showCC?["Name","Email","Event","Guests","Toddler","Primary","Elementary","TotalChildren","Phone","Notes","SubmittedAt"]
                  :["Name","Email","Event","Guests","Phone","Notes","SubmittedAt"];
   function q(s){s=String(s==null?"":s).replace(/"/g,'""');return '"'+s+'"';}
   var rows=v.map(function(e){
+    var c=ccOf(e);
     var cells=showCC?[e.name,e.email,e.event,e.guests,
-                      (e.ccToddler==null?"":e.ccToddler),(e.ccPrimary==null?"":e.ccPrimary),(e.ccElementary==null?"":e.ccElementary),
-                      (e.children==null?"":e.children),e.phone,e.message,e.ts]
-                    :[e.name,e.email,e.event,e.guests,e.phone,e.message,e.ts];
+                      (c&&c.known?c.t:""),(c&&c.known?c.p:""),(c&&c.known?c.e:""),
+                      (c?c.total:""),e.phone,notesOf(e),e.ts]
+                    :[e.name,e.email,e.event,e.guests,e.phone,notesOf(e),e.ts];
     return cells.map(q).join(",");});
   var name=rsvpFilter?("rsvps-"+slug(rsvpFilter)+".csv"):"event-rsvps-all-events.csv";
   var out=head.map(q).join(",")+"\n"+rows.join("\n");
@@ -1338,9 +1368,9 @@ function exportRsvpCsv(){
     function n(x){var k=parseInt(x,10);return isNaN(k)?0:k;}
     var sT=0,sP=0,sE=0,sAll=0,sGuests=0,withCare=0;
     v.forEach(function(e){
-      sT+=n(e.ccToddler);sP+=n(e.ccPrimary);sE+=n(e.ccElementary);
-      sAll+=n(e.children);sGuests+=n(e.guests);
-      if(n(e.children)>0)withCare++;
+      var c=ccOf(e);
+      if(c){ if(c.known){sT+=c.t||0;sP+=c.p||0;sE+=c.e||0;} sAll+=c.total||0; if((c.total||0)>0)withCare++; }
+      sGuests+=n(e.guests);
     });
     var unknown=Math.max(0,sAll-(sT+sP+sE));
     var blank=new Array(head.length).fill("").map(q).join(",");
