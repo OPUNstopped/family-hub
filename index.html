@@ -1331,7 +1331,41 @@ function exportRsvpCsv(){
                     :[e.name,e.email,e.event,e.guests,e.phone,e.message,e.ts];
     return cells.map(q).join(",");});
   var name=rsvpFilter?("rsvps-"+slug(rsvpFilter)+".csv"):"event-rsvps-all-events.csv";
-  dl(new Blob([head.map(q).join(",")+"\n"+rows.join("\n")],{type:"text/csv"}),name);
+  var out=head.map(q).join(",")+"\n"+rows.join("\n");
+  if(showCC){
+    // Totals for staffing, written under the data so the columns still line up
+    // and the sheet can be sorted or filtered without the summary getting mixed in.
+    function n(x){var k=parseInt(x,10);return isNaN(k)?0:k;}
+    var sT=0,sP=0,sE=0,sAll=0,sGuests=0,withCare=0;
+    v.forEach(function(e){
+      sT+=n(e.ccToddler);sP+=n(e.ccPrimary);sE+=n(e.ccElementary);
+      sAll+=n(e.children);sGuests+=n(e.guests);
+      if(n(e.children)>0)withCare++;
+    });
+    var unknown=Math.max(0,sAll-(sT+sP+sE));
+    var blank=new Array(head.length).fill("").map(q).join(",");
+    // A TOTALS line that stays aligned under its own columns...
+    var totals=["TOTALS","","",String(sGuests),String(sT),String(sP),String(sE),String(sAll)];
+    while(totals.length<head.length)totals.push("");
+    out+="\n"+blank+"\n"+totals.map(q).join(",");
+    // ...then a plain label/value block, so no figure can be read under the
+    // wrong heading.
+    function line(label,val){
+      var r=[label,String(val)];
+      while(r.length<head.length)r.push("");
+      return r.map(q).join(",");
+    }
+    out+="\n"+blank;
+    out+="\n"+line("CHILDCARE BREAKDOWN","");
+    out+="\n"+line("Toddler",sT);
+    out+="\n"+line("Primary",sP);
+    out+="\n"+line("Elementary",sE);
+    if(unknown)out+="\n"+line("Age group not given",unknown);
+    out+="\n"+line("Total children needing childcare",sAll);
+    out+="\n"+line("RSVPs requesting childcare",withCare+" of "+v.length);
+    out+="\n"+line("Total adults/guests attending",sGuests);
+  }
+  dl(new Blob([out],{type:"text/csv"}),name);
   toast("Exported "+v.length+" RSVP"+(v.length===1?"":"s")+(rsvpFilter?" for "+rsvpFilter:""),4000);
 }
 function buildMonthEdit(){
