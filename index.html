@@ -824,16 +824,22 @@ function renderAll(){
       '<button class="btn-green" data-act="'+esc(act)+'" data-mc="'+i+'">'+esc(c.btn||"Details")+'</button></div>';
   }).join("");
 
+  // Upcoming Events, the RSVP picker and the volunteer picker all read from one
+  // date-sorted list, so anything added later drops into place by date on its own.
+  var sortedEvents=eventsByDate(content.events);
+
   var eg=document.getElementById("evGrid");
-  eg.innerHTML=content.events.map(function(e,i){
+  eg.innerHTML=sortedEvents.map(function(e,i){
     var src=flyerSrcFor(e);
     return '<div class="ev-card'+(src?' clickable':'')+'"'+(src?' data-i="'+i+'"':'')+'><div class="ev-ic">'+icon(e.icon)+'</div><div class="ev-date">'+esc(e.date)+'</div>'+
       '<div class="ev-name">'+esc(e.name)+'</div>'+(e.note?'<div class="ev-note">'+esc(e.note)+'</div>':'')+
       (src?'<div class="ev-flyer">View flyer &rarr;</div>':'')+'</div>';
   }).join("");
-  [].forEach.call(eg.querySelectorAll(".ev-card.clickable"),function(el){el.addEventListener("click",function(){var e=content.events[+el.getAttribute("data-i")];if(!e)return;var src=flyerSrcFor(e);if(src)openImg(src,flyerTitleFor(e));});});
+  // data-i indexes the sorted list above, not content.events, so flyers stay
+  // attached to the event they belong to.
+  [].forEach.call(eg.querySelectorAll(".ev-card.clickable"),function(el){el.addEventListener("click",function(){var e=sortedEvents[+el.getAttribute("data-i")];if(!e)return;var src=flyerSrcFor(e);if(src)openImg(src,flyerTitleFor(e));});});
 
-  var evOpts=eventsByDate(content.events).map(function(e){var lbl=e.name+(e.date?" — "+e.date:"");return '<option value="'+esc(lbl)+'"'+(e.childcare?' data-childcare="1"':'')+'>'+esc(lbl)+'</option>';}).join("");
+  var evOpts=sortedEvents.map(function(e){var lbl=e.name+(e.date?" — "+e.date:"");return '<option value="'+esc(lbl)+'"'+(e.childcare?' data-childcare="1"':'')+'>'+esc(lbl)+'</option>';}).join("");
   var vs=document.getElementById("volEvent"); if(vs)vs.innerHTML='<option value="">Wherever I\'m needed most</option>'+evOpts;
   var re2=document.getElementById("rsvpEvent"); if(re2){re2.innerHTML='<option value="">Select an event…</option>'+evOpts;syncChildcareRow();}
 
