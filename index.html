@@ -72,7 +72,7 @@
   .sec-head .htext svg{width:26px;height:26px;color:var(--gold);}
   .sec-sub{text-align:center;color:var(--muted);max-width:560px;margin:0 auto 26px;font-size:1.02rem;}
 
-  .cards3{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;}
+  .cards3{display:grid;grid-template-columns:repeat(auto-fit,minmax(265px,1fr));gap:22px;}
   .mcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:26px 22px;text-align:center;display:flex;flex-direction:column;align-items:center;box-shadow:var(--shadow);transition:transform .15s,box-shadow .15s;}
   .mcard:hover{transform:translateY(-3px);box-shadow:0 14px 28px rgba(27,46,76,.10);}
   .mcard .ic{display:block;margin:0 auto 12px;}
@@ -301,6 +301,9 @@
   .vtable td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink);}
   .vtable td a{color:var(--green-soft);}
   .vtable .rm{color:#a23a2a;cursor:pointer;background:none;border:none;font-family:inherit;font-size:.85rem;}
+  .ce-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;padding-bottom:9px;border-bottom:1px solid var(--line);}
+  .ce-num{font-size:.8rem;font-weight:700;color:var(--navy-head);letter-spacing:.06em;text-transform:uppercase;}
+  .mc-addrow{margin-top:16px;}
   .cc-ages{display:flex;gap:10px;flex-wrap:wrap;}
   .cc-age{flex:1 1 90px;min-width:86px;}
   .cc-age-lbl{display:block;font-size:.78rem;font-weight:600;color:var(--navy-head);margin-bottom:4px;letter-spacing:.02em;}
@@ -817,7 +820,12 @@ function renderAll(){
   document.getElementById("calKmThumb").src=calSrc("km");
   document.getElementById("calPtaThumb").src=calSrc("pta");
 
-  document.getElementById("monthCards").innerHTML=content.monthCards.map(function(c,i){
+  // The whole "This Month" section steps aside when every card has been deleted,
+  // rather than leaving a heading with nothing under it.
+  var mcSec=document.getElementById("events"),mcWrap=document.getElementById("monthCards");
+  var mcList=content.monthCards||[];
+  if(mcSec)mcSec.style.display=mcList.length?"":"none";
+  mcWrap.innerHTML=mcList.map(function(c,i){
     // If this card has an uploaded flyer image, its button opens that image.
     var act=c.flyerImg?"flyerimg":(c.action||"");
     return '<div class="mcard"><span class="ic">'+icon(c.icon)+'</span><h3>'+esc(c.title)+'</h3><div class="when">'+esc(c.date)+'</div>'+
@@ -1145,7 +1153,8 @@ function renderDashboard(){
         '<button class="btn primary small" id="rsvpCsv">Export CSV</button>'+
         '<button class="btn danger small" id="rsvpClear">Clear all</button></div></div>'+
 
-    '<div class="panel"><h3>'+icon("coffee")+'“This Month” cards</h3><p class="hint">The three highlighted cards near the top.</p><div class="grid2" id="monthEdit"></div></div>'+
+    '<div class="panel"><h3>'+icon("coffee")+'“This Month” cards</h3><p class="hint">The highlighted cards near the top of the home page. Add as many as you need, or remove ones that are finished — they sit side by side and wrap onto a second row if there are more than three.</p><div class="grid2" id="monthEdit"></div>'+
+      '<div class="mc-addrow"><button class="btn primary small" id="mcAdd">+ Add a card</button></div></div>'+
 
     '<div class="panel"><h3>'+icon("star")+'Upcoming Events</h3><p class="hint">Date, name and a short detail line for each event.</p><div id="eventsEdit"></div><button class="btn primary small add-btn" id="addEvent">+ Add event</button></div>'+
 
@@ -1436,10 +1445,15 @@ function exportRsvpCsv(){
 }
 function buildMonthEdit(){
   var w=document.getElementById("monthEdit");
+  if(!content.monthCards)content.monthCards=[];
+  if(!content.monthCards.length){
+    w.innerHTML='<p class="hint" style="grid-column:1/-1;margin:4px 0 0">No cards right now — the “This Month” section is hidden on the home page. Use “Add a card” below to start one.</p>';
+  } else {
   w.innerHTML=content.monthCards.map(function(c,i){
     var hasImg=!!c.flyerImg;
     return '<div class="card-edit">'+
-    '<div class="lbl">Card '+(i+1)+' — icon</div><select class="input mcicon" data-i="'+i+'">'+iconOptions(c.icon)+'</select>'+
+    '<div class="ce-head"><span class="ce-num">Card '+(i+1)+'</span><button class="btn danger small mcdel" data-i="'+i+'">Delete card</button></div>'+
+    '<div class="lbl">Icon</div><select class="input mcicon" data-i="'+i+'">'+iconOptions(c.icon)+'</select>'+
     '<div class="lbl" style="margin-top:10px">Title</div><input class="input mctitle" data-i="'+i+'" value="'+esc(c.title)+'">'+
     '<div class="lbl" style="margin-top:10px">Date / subtitle</div><input class="input mcdate" data-i="'+i+'" value="'+esc(c.date)+'">'+
     '<div class="lbl" style="margin-top:10px">Button label</div><input class="input mcbtn" data-i="'+i+'" value="'+esc(c.btn)+'">'+
@@ -1452,11 +1466,30 @@ function buildMonthEdit(){
       '<input type="file" id="mcflyer'+i+'" class="mcflyerin" data-i="'+i+'" accept="image/*" style="display:none">'+
       '<div class="fe-hint">When a flyer is uploaded, this card\'s button opens it. Remove it to use the button action above instead.</div>'+
     '</div></div>';}).join("");
+  }
   function b(cls,p){[].forEach.call(w.querySelectorAll(cls),function(el){var h=function(){content.monthCards[+el.dataset.i][p]=el.value;};el.addEventListener("input",h);el.addEventListener("change",h);});}
   b(".mcicon","icon");b(".mctitle","title");b(".mcdate","date");b(".mcbtn","btn");b(".mcact","action");
   [].forEach.call(w.querySelectorAll(".mcflyerin"),function(el){el.onchange=function(e){var f=e.target.files[0];if(!f||!/^image\//.test(f.type)){toast("Please choose an image");return;}
     var idx=+el.dataset.i;shrinkImage(f,1400,function(data){content.monthCards[idx].flyerImg=data;buildMonthEdit();toast("Flyer added — press Save changes");});el.value="";};});
   [].forEach.call(w.querySelectorAll(".mcflyerrm"),function(el){el.onclick=function(){delete content.monthCards[+el.dataset.i].flyerImg;buildMonthEdit();toast("Flyer removed — press Save changes");};});
+  [].forEach.call(w.querySelectorAll(".mcdel"),function(el){el.onclick=function(){
+    var i=+el.dataset.i,c=content.monthCards[i];
+    if(!confirm("Delete the card “"+((c&&c.title)||"Card "+(i+1))+"”?\n\nIt disappears from the home page once you press Save changes."))return;
+    content.monthCards.splice(i,1);
+    buildMonthEdit();
+    toast("Card deleted — press Save changes",4000);
+  };});
+  var add=document.getElementById("mcAdd");
+  if(add)add.onclick=function(){
+    content.monthCards.push({icon:"star",title:"New card",date:"",btn:"Details",action:""});
+    buildMonthEdit();
+    // Bring the new card into view and put the cursor in its title.
+    var boxes=w.querySelectorAll(".card-edit");
+    var last=boxes[boxes.length-1];
+    if(last){if(last.scrollIntoView)last.scrollIntoView({behavior:"smooth",block:"center"});
+      var t=last.querySelector(".mctitle"); if(t){t.focus();t.select();}}
+    toast("Card added — fill it in, then press Save changes",4000);
+  };
 }
 function buildEventsEdit(){
   var w=document.getElementById("eventsEdit");
