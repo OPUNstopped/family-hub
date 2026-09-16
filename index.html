@@ -488,6 +488,37 @@
   </div>
 </section>
 
+<section class="sec" id="rsvp">
+  <div class="wrap">
+    <div class="sec-head"><span class="hline"></span><span class="htext"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M8.5 14.5l2.2 2.2 4.3-4.3"/></svg>RSVP for an Event</span><span class="hline"></span></div>
+    <p class="sec-sub" id="rsvpIntro"></p>
+    <div class="vol-wrap">
+      <div class="vol-form" id="rsvpFormFields">
+        <div><label>Full name <span class="req">*</span></label><input class="input" id="rsvpName" autocomplete="name" placeholder="Your name"></div>
+        <div><label>Email <span class="req">*</span></label><input class="input" id="rsvpEmail" type="email" autocomplete="email" placeholder="you@example.com"></div>
+        <div><label>Which event? <span class="req">*</span></label><select class="input" id="rsvpEvent"></select></div>
+        <div><label>Number attending</label><input class="input" id="rsvpGuests" type="number" min="1" value="1"></div>
+        <div id="rsvpChildcareRow" style="display:none"><label>How many children need childcare?</label>
+          <div class="cc-ages">
+            <div class="cc-age"><span class="cc-age-lbl">Toddler</span><input class="input" id="rsvpCcToddler" type="number" min="0" value="0" inputmode="numeric"></div>
+            <div class="cc-age"><span class="cc-age-lbl">Primary</span><input class="input" id="rsvpCcPrimary" type="number" min="0" value="0" inputmode="numeric"></div>
+            <div class="cc-age"><span class="cc-age-lbl">Elementary</span><input class="input" id="rsvpCcElementary" type="number" min="0" value="0" inputmode="numeric"></div>
+          </div>
+          <div class="field-hint" id="rsvpChildcareHint">Childcare is provided for this event. Enter how many children in each age group, so we can arrange the right staff. Leave all at 0 if you don't need it.</div></div>
+        <div><label>Contact number</label><input class="input" id="rsvpPhone" type="tel" autocomplete="tel" placeholder="(555) 555-5555"></div>
+        <div><label>Notes (optional)</label><input class="input" id="rsvpMsg" placeholder="Allergies, questions, anything else"></div>
+        <div class="vol-actions"><span class="vol-err" id="rsvpErr"></span><button class="btn-submit" id="rsvpSubmit" type="button">Submit RSVP</button></div>
+      </div>
+      <div class="vol-success" id="rsvpSuccess">
+        <div class="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg></div>
+        <h3 id="rsvpThanks">You're on the list!</h3>
+        <p>Your RSVP has been received. We can't wait to see you there.</p>
+        <button class="link-btn" id="rsvpAnother">RSVP for another event</button>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section class="sec vol-band" id="volunteer">
   <div class="wrap">
     <div class="sec-head"><span class="hline"></span><span class="htext"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 21s-8-5.3-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.7-8 11-8 11z"/></svg>Volunteer With Us</span><span class="hline"></span></div>
@@ -523,37 +554,6 @@
       <p class="sec-sub">Our 2026–2027 PTA calendar of events. Mark your family calendar!</p>
       <div class="ev-grid" id="evGrid"></div>
       <div class="link-more"><a data-cal="pta">View Full PTA Calendar <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div>
-    </div>
-  </div>
-</section>
-
-<section class="sec" id="rsvp">
-  <div class="wrap">
-    <div class="sec-head"><span class="hline"></span><span class="htext"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M8.5 14.5l2.2 2.2 4.3-4.3"/></svg>RSVP for an Event</span><span class="hline"></span></div>
-    <p class="sec-sub" id="rsvpIntro"></p>
-    <div class="vol-wrap">
-      <div class="vol-form" id="rsvpFormFields">
-        <div><label>Full name <span class="req">*</span></label><input class="input" id="rsvpName" autocomplete="name" placeholder="Your name"></div>
-        <div><label>Email <span class="req">*</span></label><input class="input" id="rsvpEmail" type="email" autocomplete="email" placeholder="you@example.com"></div>
-        <div><label>Which event? <span class="req">*</span></label><select class="input" id="rsvpEvent"></select></div>
-        <div><label>Number attending</label><input class="input" id="rsvpGuests" type="number" min="1" value="1"></div>
-        <div id="rsvpChildcareRow" style="display:none"><label>How many children need childcare?</label>
-          <div class="cc-ages">
-            <div class="cc-age"><span class="cc-age-lbl">Toddler</span><input class="input" id="rsvpCcToddler" type="number" min="0" value="0" inputmode="numeric"></div>
-            <div class="cc-age"><span class="cc-age-lbl">Primary</span><input class="input" id="rsvpCcPrimary" type="number" min="0" value="0" inputmode="numeric"></div>
-            <div class="cc-age"><span class="cc-age-lbl">Elementary</span><input class="input" id="rsvpCcElementary" type="number" min="0" value="0" inputmode="numeric"></div>
-          </div>
-          <div class="field-hint" id="rsvpChildcareHint">Childcare is provided for this event. Enter how many children in each age group, so we can arrange the right staff. Leave all at 0 if you don't need it.</div></div>
-        <div><label>Contact number</label><input class="input" id="rsvpPhone" type="tel" autocomplete="tel" placeholder="(555) 555-5555"></div>
-        <div><label>Notes (optional)</label><input class="input" id="rsvpMsg" placeholder="Allergies, questions, anything else"></div>
-        <div class="vol-actions"><span class="vol-err" id="rsvpErr"></span><button class="btn-submit" id="rsvpSubmit" type="button">Submit RSVP</button></div>
-      </div>
-      <div class="vol-success" id="rsvpSuccess">
-        <div class="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg></div>
-        <h3 id="rsvpThanks">You're on the list!</h3>
-        <p>Your RSVP has been received. We can't wait to see you there.</p>
-        <button class="link-btn" id="rsvpAnother">RSVP for another event</button>
-      </div>
     </div>
   </div>
 </section>
@@ -833,7 +833,7 @@ function renderAll(){
   }).join("");
   [].forEach.call(eg.querySelectorAll(".ev-card.clickable"),function(el){el.addEventListener("click",function(){var e=content.events[+el.getAttribute("data-i")];if(!e)return;var src=flyerSrcFor(e);if(src)openImg(src,flyerTitleFor(e));});});
 
-  var evOpts=content.events.map(function(e){var lbl=e.name+(e.date?" — "+e.date:"");return '<option value="'+esc(lbl)+'"'+(e.childcare?' data-childcare="1"':'')+'>'+esc(lbl)+'</option>';}).join("");
+  var evOpts=eventsByDate(content.events).map(function(e){var lbl=e.name+(e.date?" — "+e.date:"");return '<option value="'+esc(lbl)+'"'+(e.childcare?' data-childcare="1"':'')+'>'+esc(lbl)+'</option>';}).join("");
   var vs=document.getElementById("volEvent"); if(vs)vs.innerHTML='<option value="">Wherever I\'m needed most</option>'+evOpts;
   var re2=document.getElementById("rsvpEvent"); if(re2){re2.innerHTML='<option value="">Select an event…</option>'+evOpts;syncChildcareRow();}
 
@@ -927,6 +927,36 @@ function postSubmission(entry,cb){
       else cb(false,res.d&&res.d.error);
     })
     .catch(function(){cb(false,"Could not reach the server. Please check your connection.");});
+}
+// Event dates are typed freehand ("Oct 16 (Fri)", "November", "21 May",
+// "May 3–7", "Date TBD"), so this reads whatever month and day it can find.
+// The school year runs August to July, so August sorts first and July last.
+// Anything with no usable date ("Date TBD") drops to the bottom of the list,
+// keeping its original order.
+var MONTHS=["january","february","march","april","may","june","july","august","september","october","november","december"];
+function eventSortKey(e){
+  var s=String((e&&e.date)||"").toLowerCase();
+  var mi=-1;
+  for(var i=0;i<MONTHS.length;i++){
+    var m=MONTHS[i];
+    if(s.indexOf(m)!==-1||s.indexOf(m.slice(0,3))!==-1){mi=i;break;}
+  }
+  if(mi===-1)return null; // no month named — sort to the end
+  // First number that isn't part of a year, e.g. "3" from "May 3–7".
+  var dm=s.replace(/\(.*?\)/g,"").match(/\b(\d{1,2})\b/);
+  var day=dm?parseInt(dm[1],10):99; // month-only ("November") sorts after dated days
+  var schoolMonth=(mi+5)%12;        // August -> 0 ... July -> 11
+  return schoolMonth*100+day;
+}
+function eventsByDate(list){
+  return (list||[]).map(function(e,i){return {e:e,i:i,k:eventSortKey(e)};})
+    .sort(function(a,b){
+      if(a.k===null&&b.k===null)return a.i-b.i;
+      if(a.k===null)return 1;
+      if(b.k===null)return -1;
+      if(a.k!==b.k)return a.k-b.k;
+      return a.i-b.i;
+    }).map(function(x){return x.e;});
 }
 // The childcare question belongs only to events flagged for it in the admin
 // area, so it appears and disappears as the family changes their event choice.
