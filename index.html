@@ -522,8 +522,8 @@
       </div>
       <div class="rsvp-external" id="rsvpExternal" style="display:none">
         <div class="rx-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 9.5V7a1 1 0 011-1h16a1 1 0 011 1v2.5a2.5 2.5 0 000 5V17a1 1 0 01-1 1H4a1 1 0 01-1-1v-2.5a2.5 2.5 0 000-5z"/><path d="M14 6v12" stroke-dasharray="2 2.5"/></svg></div>
-        <h3 id="rxTitle">Tickets for this event are handled separately</h3>
-        <p id="rxText">RSVPs for this event are taken on our ticketing page. Tap the button below to reserve your spot.</p>
+        <h3 id="rxTitle">Ready to join us?</h3>
+        <p id="rxText">All guests must complete their RSVP, payment, and required waiver through our secure ticketing page.<br><br>Tap the button below to complete your registration and reserve your spot. The ticketing page will open in a new tab.</p>
         <a class="btn-submit rx-btn" id="rxBtn" href="#" target="_blank" rel="noopener">Get tickets <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a>
         <button class="link-btn" id="rxBack">&larr; Choose a different event</button>
       </div>
@@ -1012,8 +1012,9 @@ function syncExternalRsvp(){
   var label=sel&&sel.value?sel.value.split(" — ")[0]:"this event";
   if(url){
     document.getElementById("rxBtn").href=url;
-    document.getElementById("rxTitle").textContent="Tickets for "+label+" are booked separately";
-    document.getElementById("rxText").textContent="RSVPs for "+label+" are taken on our ticketing page, so we can't take one here. Tap below to reserve your spot — it opens in a new tab.";
+    document.getElementById("rxTitle").textContent="Ready to join us at the "+label+"?";
+    document.getElementById("rxText").innerHTML="All guests must complete their RSVP, payment, and required waiver through our secure ticketing page."+
+      "<br><br>Tap the button below to complete your registration and reserve your spot. The ticketing page will open in a new tab.";
     fields.style.display="none"; ext.style.display="";
   } else { ext.style.display="none"; fields.style.display=""; }
 }
