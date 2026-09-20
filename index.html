@@ -304,6 +304,14 @@
   .ce-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;padding-bottom:9px;border-bottom:1px solid var(--line);}
   .ce-num{font-size:.8rem;font-weight:700;color:var(--navy-head);letter-spacing:.06em;text-transform:uppercase;}
   .mc-addrow{margin-top:16px;}
+  .rsvp-external{text-align:center;padding:30px 24px;}
+  .rsvp-external .rx-ic{width:56px;height:56px;margin:0 auto 14px;border-radius:50%;background:#F3F6EE;display:flex;align-items:center;justify-content:center;}
+  .rsvp-external .rx-ic svg{width:30px;height:30px;color:#5C7A49;}
+  .rsvp-external h3{font-family:"Cormorant Garamond",serif;font-size:1.5rem;color:var(--navy-head);margin:0 0 8px;}
+  .rsvp-external p{color:var(--muted);margin:0 auto 20px;max-width:430px;line-height:1.55;}
+  .rx-btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;text-decoration:none;width:auto;padding-left:28px;padding-right:24px;}
+  .rx-btn svg{width:17px;height:17px;}
+  .rsvp-external .link-btn{margin-top:16px;}
   .cc-ages{display:flex;gap:10px;flex-wrap:wrap;}
   .cc-age{flex:1 1 90px;min-width:86px;}
   .cc-age-lbl{display:block;font-size:.78rem;font-weight:600;color:var(--navy-head);margin-bottom:4px;letter-spacing:.02em;}
@@ -511,6 +519,13 @@
         <div><label>Contact number</label><input class="input" id="rsvpPhone" type="tel" autocomplete="tel" placeholder="(555) 555-5555"></div>
         <div><label>Notes (optional)</label><input class="input" id="rsvpMsg" placeholder="Allergies, questions, anything else"></div>
         <div class="vol-actions"><span class="vol-err" id="rsvpErr"></span><button class="btn-submit" id="rsvpSubmit" type="button">Submit RSVP</button></div>
+      </div>
+      <div class="rsvp-external" id="rsvpExternal" style="display:none">
+        <div class="rx-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 9.5V7a1 1 0 011-1h16a1 1 0 011 1v2.5a2.5 2.5 0 000 5V17a1 1 0 01-1 1H4a1 1 0 01-1-1v-2.5a2.5 2.5 0 000-5z"/><path d="M14 6v12" stroke-dasharray="2 2.5"/></svg></div>
+        <h3 id="rxTitle">Tickets for this event are handled separately</h3>
+        <p id="rxText">RSVPs for this event are taken on our ticketing page. Tap the button below to reserve your spot.</p>
+        <a class="btn-submit rx-btn" id="rxBtn" href="#" target="_blank" rel="noopener">Get tickets <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a>
+        <button class="link-btn" id="rxBack">&larr; Choose a different event</button>
       </div>
       <div class="vol-success" id="rsvpSuccess">
         <div class="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg></div>
@@ -738,9 +753,18 @@ function loadContentLocal(){var c=JSON.parse(JSON.stringify(DEFAULTS));var s=LS.
 function isChildcareEvent(name){
   return String(name||"").toLowerCase().replace(/[^a-z]/g,"").indexOf("jessemccarthy")!==-1;
 }
+// Fall Festival tickets are sold through Zeffy, so that event links out instead
+// of taking an RSVP here. Only events that have never been set either way get
+// filled in, so an admin who clears or changes the link keeps their version.
+var FALL_FESTIVAL_URL="https://www.zeffy.com/en-US/ticketing/fall-festival-102";
+function isFallFestival(name){
+  return String(name||"").toLowerCase().replace(/[^a-z]/g,"").indexOf("fallfestival")!==-1;
+}
 function normalizeEvents(){
   (content.events||[]).forEach(function(e){
-    if(e && e.childcare===undefined && isChildcareEvent(e.name)) e.childcare=true;
+    if(!e)return;
+    if(e.childcare===undefined && isChildcareEvent(e.name)) e.childcare=true;
+    if(e.rsvpUrl===undefined && isFallFestival(e.name)) e.rsvpUrl=FALL_FESTIVAL_URL;
   });
 }
 function applyContent(o){if(!o)return;for(var k in o)content[k]=o[k];normalizeEvents();LS.set("mmfh_content",JSON.stringify(content));}
@@ -847,9 +871,9 @@ function renderAll(){
   // attached to the event they belong to.
   [].forEach.call(eg.querySelectorAll(".ev-card.clickable"),function(el){el.addEventListener("click",function(){var e=sortedEvents[+el.getAttribute("data-i")];if(!e)return;var src=flyerSrcFor(e);if(src)openImg(src,flyerTitleFor(e));});});
 
-  var evOpts=sortedEvents.map(function(e){var lbl=e.name+(e.date?" — "+e.date:"");return '<option value="'+esc(lbl)+'"'+(e.childcare?' data-childcare="1"':'')+'>'+esc(lbl)+'</option>';}).join("");
+  var evOpts=sortedEvents.map(function(e){var lbl=e.name+(e.date?" — "+e.date:"");return '<option value="'+esc(lbl)+'"'+(e.childcare?' data-childcare="1"':'')+(e.rsvpUrl?' data-rsvpurl="'+esc(e.rsvpUrl)+'"':'')+'>'+esc(lbl)+'</option>';}).join("");
   var vs=document.getElementById("volEvent"); if(vs)vs.innerHTML='<option value="">Wherever I\'m needed most</option>'+evOpts;
-  var re2=document.getElementById("rsvpEvent"); if(re2){re2.innerHTML='<option value="">Select an event…</option>'+evOpts;syncChildcareRow();}
+  var re2=document.getElementById("rsvpEvent"); if(re2){re2.innerHTML='<option value="">Select an event…</option>'+evOpts;syncChildcareRow();syncExternalRsvp();}
 
   var fsec=document.getElementById("flyers"),fg=document.getElementById("flyersGrid");
   if(content.flyers&&content.flyers.length){fsec.style.display="";
@@ -972,6 +996,27 @@ function eventsByDate(list){
       return a.i-b.i;
     }).map(function(x){return x.e;});
 }
+// Some events sell tickets on an outside service (Zeffy), so the site must not
+// take its own RSVP for them. Choosing one of those events replaces the form
+// with a link out, rather than quietly collecting an RSVP that nobody reads.
+function selectedEventUrl(){
+  var sel=document.getElementById("rsvpEvent"); if(!sel)return "";
+  var opt=sel.options[sel.selectedIndex];
+  return (opt&&opt.getAttribute("data-rsvpurl"))||"";
+}
+function syncExternalRsvp(){
+  var ext=document.getElementById("rsvpExternal"),fields=document.getElementById("rsvpFormFields");
+  if(!ext||!fields)return;
+  var url=selectedEventUrl();
+  var sel=document.getElementById("rsvpEvent");
+  var label=sel&&sel.value?sel.value.split(" — ")[0]:"this event";
+  if(url){
+    document.getElementById("rxBtn").href=url;
+    document.getElementById("rxTitle").textContent="Tickets for "+label+" are booked separately";
+    document.getElementById("rxText").textContent="RSVPs for "+label+" are taken on our ticketing page, so we can't take one here. Tap below to reserve your spot — it opens in a new tab.";
+    fields.style.display="none"; ext.style.display="";
+  } else { ext.style.display="none"; fields.style.display=""; }
+}
 // The childcare question belongs only to events flagged for it in the admin
 // area, so it appears and disappears as the family changes their event choice.
 function selectedEventWantsChildcare(){
@@ -1012,7 +1057,13 @@ function syncChildcareRow(){
 function bindRsvp(){
   var btn=document.getElementById("rsvpSubmit"); if(!btn)return;
   var evSel=document.getElementById("rsvpEvent");
-  if(evSel)evSel.onchange=syncChildcareRow;
+  if(evSel)evSel.onchange=function(){syncChildcareRow();syncExternalRsvp();};
+  var rxBack=document.getElementById("rxBack");
+  if(rxBack)rxBack.onclick=function(){
+    var sel=document.getElementById("rsvpEvent"); if(sel)sel.value="";
+    syncChildcareRow(); syncExternalRsvp();
+    if(sel&&sel.focus)sel.focus();
+  };
   btn.onclick=function(){
     var name=val("rsvpName"),email=val("rsvpEmail"),event=document.getElementById("rsvpEvent").value,
         guests=document.getElementById("rsvpGuests").value,phone=val("rsvpPhone"),msg=val("rsvpMsg"),
@@ -1020,6 +1071,9 @@ function bindRsvp(){
     if(!name){err.textContent="Please enter your name.";return;}
     if(!email||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){err.textContent="Please enter a valid email.";return;}
     if(!event){err.textContent="Please choose an event.";return;}
+    // Belt and braces: if an externally ticketed event somehow reaches this
+    // point, send the family to the ticket page instead of storing an RSVP.
+    if(selectedEventUrl()){syncExternalRsvp();err.textContent="";return;}
     err.textContent="";
     var entry={type:"rsvp",name:name,email:email,phone:phone,event:event,guests:guests||"1",message:msg};
     // Only attach childcare counts for events that actually ask for them.
@@ -1511,6 +1565,9 @@ function buildEventsEdit(){
         '<label class="cc-toggle"><input type="checkbox" class="evcc" data-i="'+i+'"'+(e.childcare?' checked':'')+'>'+
         '<span>Ask about childcare on the RSVP form</span></label>'+
         '<div class="fe-hint">Only tick this for events offering childcare. Families RSVPing for it get an extra “How many children need childcare?” box, and those numbers show as their own column in the RSVP table.</div>'+
+        '<div class="lbl" style="margin-top:12px">Ticket / RSVP link (optional)</div>'+
+        '<input class="input evurl" data-i="'+i+'" value="'+esc(e.rsvpUrl||"")+'" placeholder="https://www.zeffy.com/...">'+
+        '<div class="fe-hint">Paste a link here if tickets for this event are sold somewhere else, like Zeffy. Families who pick this event get a button to that page instead of the RSVP form, so no RSVPs are collected here. Leave blank to use the normal form.</div>'+
       '</div>'+
     '</div></div>';}).join("");
   [].forEach.call(w.querySelectorAll(".evdate"),function(el){el.oninput=function(){content.events[+el.dataset.i].date=el.value;};});
@@ -1522,6 +1579,10 @@ function buildEventsEdit(){
     var e=content.events[+el.dataset.i];
     if(el.checked)e.childcare=true; else e.childcare=false;
     toast(el.checked?"Childcare question turned on — press Save changes":"Childcare question turned off — press Save changes",4000);
+  };});
+  [].forEach.call(w.querySelectorAll(".evurl"),function(el){el.oninput=function(){
+    var e=content.events[+el.dataset.i],v=el.value.trim();
+    if(v)e.rsvpUrl=v; else e.rsvpUrl=""; // blank means "use the normal form"
   };});
   [].forEach.call(w.querySelectorAll(".evflyerin"),function(el){el.onchange=function(ev){var f=ev.target.files[0];if(!f||!/^image\//.test(f.type)){toast("Please choose an image");return;}
     var idx=+el.dataset.i;shrinkImage(f,1400,function(data){var e=content.events[idx];e.flyerImg=data;delete e.noFlyer;buildEventsEdit();toast("Flyer added — press Save changes");});el.value="";};});
